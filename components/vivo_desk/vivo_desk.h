@@ -33,11 +33,16 @@ class VivoDeskComponent : public Component {
 
   void start_up()            { move_dir_ = UP;   last_inject_ = 0; ESP_LOGI("vivo_desk", "MOVE UP start"); }
   void start_down()          { move_dir_ = DOWN; last_inject_ = 0; ESP_LOGI("vivo_desk", "MOVE DOWN start"); }
-  void stop()                { move_dir_ = NONE; ESP_LOGI("vivo_desk", "MOVE stop"); }
+  void stop()                { move_dir_ = NONE; preset_active_ = false; ESP_LOGI("vivo_desk", "MOVE stop"); }
   void goto_preset(uint8_t n) {
     if (n < 1 || n > 4) return;
     ESP_LOGI("vivo_desk", "GOTO preset %u", n);
-    inject_pair_(preset_m_[n-1], preset_b_[n-1]);
+    move_dir_ = NONE;                         // a preset overrides any held direction
+    preset_m_active_ = preset_m_[n-1];
+    preset_b_active_ = preset_b_[n-1];
+    preset_active_ = true;                     // start the faithful replay (serviced in loop)
+    preset_t0_ = millis();
+    preset_last_slot_ = -1;
   }
 
   // Runtime relay toggle (transparent MITM handset<->brain). Default OFF (= emulate mode).
@@ -59,11 +64,9 @@ class VivoDeskComponent : public Component {
     relay_();             // forwards BOTH directions immediately (relay on) + parses height
     if (!silent_listen_) {
       if (relay_enabled_) {
-        ha_inject_();        // HA up/down rides alongside the live handset relay
-        flush_pending_b_();  // 2nd frame of an HA preset
+        drive_ha_();         // HA up/down/preset: act as the handset, relay suppressed meanwhile
       } else {
         emulate_handset_();  // standalone: ESP *is* the handset (no real handset present)
-        flush_pending_b_();
         spoof_height_();
         poll_brain_();
       }
@@ -98,10 +101,32 @@ class VivoDeskComponent : public Component {
   uint32_t last_inject_{0};
   static constexpr uint32_t INJECT_INTERVAL_MS = 150;
 
-  // Non-blocking M+B pair (preset recall): send M now, B after PAIR_GAP_MS.
-  const uint8_t *pending_b_{nullptr};
-  uint32_t pending_b_at_{0};
-  static constexpr uint32_t PAIR_GAP_MS = 30;
+  // ---- HA preset recall window --------------------------------------------
+  // A real handset press STOPS the heartbeat and repeats the command frames for the
+  // duration of the press. To make HA presets work in relay mode we mimic that: hold a
+  // "preset window" during which we (a) suppress the handset->brain relay forward and
+  // (b) repeat the preset M+B pair, so the brain sees a clean, sustained command.
+  // Preset recall replays the EXACT captured handset tap as a faithful frame stream. From the
+  // capture (M1): M, idle, B, ~15 idles, M, idle, B, then idle while the brain auto-drives —
+  // i.e. a "wake" tap then an "action" tap. CRITICAL: while replaying we SUPPRESS the relayed
+  // :A41; idle stream and emit the WHOLE stream ourselves (K-frames AND the :A41; idles), so our
+  // command isn't garbled by the handset's parallel :A41; (which caused the brain's relay to
+  // chatter/"brrrt" instead of move). One frame per ~30ms slot, mimicking the real cadence.
+  const uint8_t *preset_m_active_{nullptr};
+  const uint8_t *preset_b_active_{nullptr};
+  bool     preset_active_{false};
+  uint32_t preset_t0_{0};
+  int      preset_last_slot_{-1};
+  static constexpr uint32_t PRESET_SLOT_MS = 30;   // handset frame cadence
+  static constexpr int      PRESET_SLOTS   = 24;   // ~720ms: WAKE pair then RUN pair, then release
+  // Slot map (30ms each), faithfully replaying the captured tap:
+  //   WAKE pair → M@0, B@2  (engages the controller's direction relay — ONE clean click)
+  //   ...idle (:A41;) gap...
+  //   RUN  pair → M@18, B@20 (the motor "run" signal → brain auto-drives to the stored height)
+  // Catch-up replay (service_preset_) guarantees no frame is skipped, so the wake is a single
+  // clean engage rather than the relay chatter ("brrrt") a skipped/garbled sequence caused.
+  static constexpr int PRESET_M1_SLOT = 0,  PRESET_B1_SLOT = 2;
+  static constexpr int PRESET_M2_SLOT = 18, PRESET_B2_SLOT = 20;
 
   // ---- Diagnostics --------------------------------------------------------
   uint32_t rx_brain_{0}, rx_hand_{0}, tx_brain_{0}, tx_hand_{0};
@@ -223,24 +248,50 @@ class VivoDeskComponent : public Component {
       rx_hand_++; last_rx_us_ = micros();
       if (fb_hand_.feed(b)) {
         log_frame_("HAND ", fb_hand_);
-        if (relay_enabled_ && frame_checksum_ok(fb_hand_.data, fb_hand_.len)) {
-          write_brain_(fb_hand_.data, fb_hand_.len);  // forward handset cmd/button to brain (immediate)
+        // Forward the handset's frames to the brain — EXCEPT during a preset replay, when WE
+        // own the brain stream entirely (relayed :A41; would collide with our K-frames and make
+        // the brain's direction relay chatter instead of move). Held up/down still rides along.
+        if (relay_enabled_ && !preset_active_ && frame_checksum_ok(fb_hand_.data, fb_hand_.len)) {
+          write_brain_(fb_hand_.data, fb_hand_.len);
         }
       }
     }
   }
 
-  // ---- HA command injection (alongside the live relay) --------------------
-  // When HA holds Up/Down, stream the M-frame to the brain at the handset's cadence. This
-  // coexists with the relay: the brain_uart TX carries forwarded handset frames + our M-frames;
-  // in practice only one source (the physical handset OR HA) is commanding at any moment.
-  void ha_inject_() {
-    if (move_dir_ == NONE) return;
+  // ---- HA command driver (relay mode) -------------------------------------
+  // While HA is commanding (the relay handset->brain forward is suppressed, see relay_()),
+  // act as the handset toward the brain: repeat the held up/down M-frame, or — for a preset
+  // recall — repeat the M+B pair for the press window, then release so the brain drives itself
+  // to the stored position while the normal handset heartbeat relay resumes.
+  void drive_ha_() {
     uint32_t now = millis();
-    if (now - last_emit_ < MOVE_INTERVAL_MS) return;
-    last_emit_ = now;
-    if      (move_dir_ == UP)   write_brain_(F_UP_M, 8);
-    else if (move_dir_ == DOWN) write_brain_(F_DN_M, 8);
+    if (move_dir_ != NONE) {                       // held up/down: repeat the M-frame
+      if (now - last_emit_ < MOVE_INTERVAL_MS) return;
+      last_emit_ = now;
+      write_brain_(move_dir_ == UP ? F_UP_M : F_DN_M, 8);
+      return;
+    }
+    service_preset_();
+  }
+
+  // Faithful preset replay: one frame per 30ms slot — M/B at the captured slots, :A41; idle on
+  // the rest — for ~720ms, then release so the brain auto-drives. The relay is suppressed during
+  // this (see relay_()), so the brain hears ONLY our clean handset-equivalent stream.
+  void service_preset_() {
+    if (!preset_active_) return;
+    uint32_t now = millis();
+    int cur = (int)((now - preset_t0_) / PRESET_SLOT_MS);
+    // Advance ONE slot per loop: never SKIP a frame (a skipped wake = relay chatter / no move),
+    // but never BUNCH frames back-to-back either (bunching malforms the sequence into a momentary
+    // jog instead of the auto-drive recall). If the loop stalls past a slot we catch up one frame
+    // per loop iteration, keeping them spaced — close enough to the handset's 30ms cadence.
+    if (preset_last_slot_ < cur) {
+      int slot = ++preset_last_slot_;
+      if (slot >= PRESET_SLOTS) { preset_active_ = false; ESP_LOGI("vivo_desk", "preset replay done"); return; }
+      if      (slot == PRESET_M1_SLOT || slot == PRESET_M2_SLOT) write_brain_(preset_m_active_, 8);
+      else if (slot == PRESET_B1_SLOT || slot == PRESET_B2_SLOT) write_brain_(preset_b_active_, 8);
+      else                                                       send_ack_();   // :A41; idle
+    }
   }
 
   // ---- ACK / fallback poll (:A41;) ----------------------------------------
@@ -291,13 +342,6 @@ class VivoDeskComponent : public Component {
     if (h > 0) height_->publish_state(h);
   }
 
-  // ---- Frame injection (presets) ------------------------------------------
-  void inject_pair_(const uint8_t *mf, const uint8_t *bf) {
-    write_brain_(mf, 8);
-    pending_b_ = bf;
-    pending_b_at_ = millis() + PAIR_GAP_MS;
-  }
-
   // ---- Handset emulation --------------------------------------------------
   // Empirical model (golden capture 2026-06-25): the real handset streams a continuous 'B'
   // heartbeat at idle (keeps the brain streaming :D<height>;), plus a periodic version announce
@@ -310,19 +354,13 @@ class VivoDeskComponent : public Component {
     uint32_t now = millis();
     if (now - last_version_ >= 2000) { last_version_ = now; write_brain_(F_VERSION, sizeof(F_VERSION)); }
     if (now - last_ack2_    >= 500)  { last_ack2_ = now;    send_ack_(); }
+    if (preset_active_) { service_preset_(); return; }   // preset recall in progress
     uint32_t interval = (move_dir_ == NONE) ? HANDSET_INTERVAL_MS : MOVE_INTERVAL_MS;
     if (now - last_emit_ < interval) return;
     last_emit_ = now;
     if      (move_dir_ == UP)   write_brain_(F_UP_M, 8);
     else if (move_dir_ == DOWN) write_brain_(F_DN_M, 8);
-    else                        write_brain_(F_UP_B, 8);
-  }
-
-  void flush_pending_b_() {
-    if (pending_b_ && (int32_t)(millis() - pending_b_at_) >= 0) {
-      write_brain_(pending_b_, 8);
-      pending_b_ = nullptr;
-    }
+    else                        write_brain_(F_UP_B, 8);   // idle heartbeat
   }
 };
 
