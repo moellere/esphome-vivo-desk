@@ -132,6 +132,69 @@ Follow the two motor wires back into the console PCB.
 
 If the bridge turns out to be discrete, weigh the time against a DRV8833 module.
 
+## Building your own bridge from 2N4401 / 2N4403
+
+If the console bridge is awkward to reuse, this discrete design takes the
+ESP32's 3.3 V GPIOs directly, drives the motor from the 5 V rail, and has no
+static state that passes current through a leg. Build two identical
+half‑bridges, one for `pin_bridge_in1` and one for `pin_bridge_in2`.
+
+```
+                          +5V (motor rail)
+                 ┌──────────┬──────────────┬────────┐
+                 │          │              │        │
+               R4 4.7k    R6 220Ω        Q1 E      D1 ▲ 1N5819
+                 │          │          2N4403       │  (cathode to +5V)
+                 │          │            B ─ R1 220Ω ─┐
+                 │          │              C ────────┼──┬──────► MOTOR pin (harness 1 or 2)
+                 │          │                        │  │
+                 │          │                        │  D2 ▲ 1N5819 (anode to GND)
+                 │          │              C ────────┘  │
+                 │          │          2N4401           │
+                 │          │            B ─ R2 220Ω ─┐ │
+                 │          │             Q2 E ───────┼─┼──── GND
+                 │          │                         │ │
+      GPIO ──┬── R3 1k ── B  Q3 2N4401  C ────────────┘ │   (Q3 collector = node D: to R1 and R4)
+             │            E ── GND                      │
+             ├── R7 1k ── B  Q4 2N4401  C ──────────────┘   (Q4 collector = node E: to R2 and R6)
+             │            E ── GND
+            R8 10k
+             │
+            GND
+```
+
+- GPIO **high**: Q3 on → Q1 base pulled low through R1 (~19 mA) → motor pin
+  ≈ 4.7 V. Q4 on → node E ≈ 0.1 V → Q2 off.
+- GPIO **low**: Q3 off → R4 holds Q1's base at a stiff 5 V → Q1 off. Q4 off →
+  Q2 gets ~10 mA through R6 + R2 → motor pin ≈ 0.3 V.
+- R8 keeps the GPIO low while the ESP is in reset or being flashed.
+
+The two pre‑drivers are separate on purpose: if the NPN's base current ran
+through the pull‑up that holds the PNP's base at 5 V, that node would sag to
+~3 V and the PNP would conduct too.
+
+| IN1 | IN2 | Pin 1 | Pin 2 | Motor |
+|---|---|---|---|---|
+| low | low | GND | GND | off (dynamic brake) |
+| high | low | +5 V | GND | direction A |
+| low | high | GND | +5 V | direction B |
+| high | high | +5 V | +5 V | off |
+
+Per half‑bridge: Q1 2N4403; Q2, Q3, Q4 2N4401; R1, R2 220 Ω; R4 4.7 kΩ;
+R6 220 Ω ¼ W; R3, R7 1 kΩ; R8 10 kΩ; D1, D2 1N5819. Once per bridge: 470 µF
++ 100 nF across the 5 V rail at the bridge and 100 nF across the motor.
+
+Each GPIO sources ~5 mA. At ~300 mA motor current both output transistors
+saturate and the motor sees ~4.2 V. At a 600 mA stall the low side runs out
+of base drive and dissipates ~0.5 W in a TO‑92, so set `stall_timeout_ms`
+to `4000` with this bridge. A TIP120 or a logic‑level N‑MOSFET drops into
+Q2's place with the same drive if you have one.
+
+Bring‑up: build one half with no motor. Input tied to 3.3 V → output ≈ 4.7 V;
+input to GND → output ≈ 0.1 V. With a 100 Ω load to GND during the high test
+the rail should draw ~50 mA (Q1 saturated). Then build the second half, add
+the motor, and use the jog buttons with the supply current‑limited to 1 A.
+
 ## Calibration
 
 1. Flash with the defaults, power up, and open the device in Home Assistant.
