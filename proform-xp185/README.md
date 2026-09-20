@@ -132,6 +132,26 @@ Follow the two motor wires back into the console PCB.
 
 If the bridge turns out to be discrete, weigh the time against a DRV8833 module.
 
+## Using two relays as the bridge
+
+Two SPDT relays (a common dual 5 V relay board) make a bridge with no
+shoot‑through state at all, and the motor gets the full 5 V through the
+contacts:
+
+| Relay board | Connects to |
+|---|---|
+| Relay 1 COM / NO / NC | motor pin 1 / +5 V / GND |
+| Relay 2 COM / NO / NC | motor pin 2 / +5 V / GND |
+| VCC (and JD‑VCC if jumpered), GND | +5 V, common GND |
+| IN1 / IN2 | `pin_bridge_in1` / `pin_bridge_in2` |
+
+Same truth table as the transistor bridges: both off = both pins grounded,
+one on = one direction, both on = both pins at 5 V. Most relay boards are
+**active‑low** (the relay pulls in when IN is grounded): set
+`bridge_active_low: "true"`. If a relay clicks in during boot, add 10 kΩ from
+that IN pin to 5 V. Keep the board away from the AD8232 wiring; the coils
+are noisy when they switch.
+
 ## Building your own bridge from 2N4401 / 2N4403
 
 If the console bridge is awkward to reuse, this discrete design takes the

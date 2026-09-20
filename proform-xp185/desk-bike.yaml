@@ -4,6 +4,8 @@
 #   - Drives the 6 V magnetic-brake gearmotor through an H-bridge (the console's
 #     own bridge with its inputs rewired, or a DRV8833 / TB6612 module) to one of
 #     8 resistance levels, closed loop on the motor's feedback potentiometer.
+#     A pair of SPDT relays works too (set bridge_active_low for active-low
+#     relay boards).
 #   - Reads cadence from the crank reed switch.
 #   - Keeps the console's resistance dial (rotary encoder), two buttons and
 #     piezo buzzer as local controls and feedback.
@@ -34,6 +36,9 @@ substitutions:
   pin_button_1: GPIO21        # console button 1, common to GND
   pin_button_2: GPIO22        # console button 2, common to GND
   pin_buzzer: GPIO23          # console piezo (PWM); see README if it is a magnetic buzzer
+
+  # --- bridge type -----------------------------------------------------------
+  bridge_active_low: "false"  # "true" for relay boards whose IN pins energise when pulled low
 
   # --- brake calibration (MEASURE, see README) -------------------------------
   pot_v_level1: "0.40"        # wiper volts at the lightest setting
@@ -114,10 +119,14 @@ globals:
 # ---------------------------------------------------------------------------
 output:
   - platform: gpio
-    pin: ${pin_bridge_in1}
+    pin:
+      number: ${pin_bridge_in1}
+      inverted: ${bridge_active_low}
     id: brake_in1
   - platform: gpio
-    pin: ${pin_bridge_in2}
+    pin:
+      number: ${pin_bridge_in2}
+      inverted: ${bridge_active_low}
     id: brake_in2
   - platform: ledc
     pin: ${pin_buzzer}
