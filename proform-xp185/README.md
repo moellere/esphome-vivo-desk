@@ -37,19 +37,20 @@ footprint; verify yours):
 
 | Pin | Function | Console PCB side |
 |---|---|---|
-| 1 | Motor A | Output node of one half‑bridge (paired 2N4403 PNP high side) |
-| 2 | Motor B | Output node of the other half‑bridge (paired 2N4403 PNP high side) |
+| 1 | Motor A | Output node of one half‑bridge (2N4403 PNP high side + 2N4401 NPN low side) |
+| 2 | Motor B | Output node of the other half‑bridge (2N4403 PNP + 2N4401 NPN) |
 | 3 | Pot supply | Feed from **3V3** in the new build |
 | 4 | Pot wiper | → ADC (`pin_pot_wiper`) |
 | 5 | Pot ground | GND |
-| 6 | Reed switch return | GND |
+| 6 | Chassis ground | GND (common with 5 and 8 on the PCB; single‑point ground at the ESP/bridge) |
 | 7 | Reed switch | → `pin_reed` (pull‑up enabled) |
-| 8 | Chassis ground | GND (common with 5 and 6 on the PCB; single‑point ground at the ESP/bridge) |
+| 8 | Reed switch return | GND |
 
-The 2N4403 is rated 600 mA, so the console bridge was sized for roughly 1 A
-per leg. A saturated PNP + NPN pair drops about 1 V, so on a 5 V supply the
-motor sees ~4 V through the console bridge; a MOSFET module (DRV8833) gives
-it the full 5 V.
+Pins 1/2 reverse polarity across the motor to move the magnets toward or away
+from the flywheel. The 2N4401/2N4403 are rated 600 mA each with one device
+per side, so the motor's stall current is below that. A saturated PNP + NPN
+pair drops about 1 V, so on a 5 V supply the motor sees ~4 V through the
+console bridge; a MOSFET module (DRV8833) gives it the full 5 V.
 
 ### ESP32 connections (defaults in the `substitutions:` block)
 
@@ -118,13 +119,16 @@ Follow the two motor wires back into the console PCB.
   from the blob MCU to its inputs and wire the ESP GPIOs in. Check the
   datasheet's truth table; some parts treat both‑high as *brake*, some as
   *forbidden*.
-- **Discrete transistors**: the blob's firmware was the shoot‑through protection,
-  and now the config is (it always passes through all‑off for one 50 ms tick
-  before changing direction). Test each input at 3.3 V through 1 kΩ with a
-  current‑limited bench supply, note which leg moves the motor which way, and
-  check that 3.3 V fully turns the high‑side transistors off against the 5 V
-  rail. If they leak or heat, add a small NPN inverter per input or a
-  74AHCT125 buffer powered from 5 V.
+- **Discrete transistors** (the XP 185 U: a 2N4403 PNP high side and a 2N4401
+  NPN low side per motor pin). If the two bases of a leg are tied together
+  and driven from one node, that node must swing the **full rail**: at 3.3 V
+  on a 5 V rail both transistors conduct at once. Never drive it straight
+  from an ESP GPIO. Use a small NPN inverter with a pull‑up to 5 V, or a
+  74AHCT125 buffer powered from 5 V, per leg (an inverter flips the sense;
+  set `in1_raises_pot` accordingly). With full‑swing drive this topology
+  cannot shoot through leg‑to‑leg: both inputs high or both low simply
+  parks both motor leads on the same rail. If instead the four bases are
+  driven separately, the config needs four outputs with interlocking; ask.
 
 If the bridge turns out to be discrete, weigh the time against a DRV8833 module.
 
