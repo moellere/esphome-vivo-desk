@@ -44,7 +44,7 @@ footprint; verify yours):
 | 5 | Pot ground | GND |
 | 6 | Reed switch return | GND |
 | 7 | Reed switch | → `pin_reed` (pull‑up enabled) |
-| 8 | Ground | GND |
+| 8 | Chassis ground | GND (common with 5 and 6 on the PCB; single‑point ground at the ESP/bridge) |
 
 The 2N4403 is rated 600 mA, so the console bridge was sized for roughly 1 A
 per leg. A saturated PNP + NPN pair drops about 1 V, so on a 5 V supply the
