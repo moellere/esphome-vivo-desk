@@ -152,7 +152,39 @@ one on = one direction, both on = both pins at 5 V. Most relay boards are
 that IN pin to 5 V. Keep the board away from the AD8232 wiring; the coils
 are noisy when they switch.
 
-## Building your own bridge from 2N4401 / 2N4403
+## Recommended: MOSFET bridge (IRF4905 + IRFZ44N)
+
+Three parts per half‑bridge, no heat, nearly the full 5 V at the motor, and
+the FET body diodes handle flyback. Build two, one per motor pin.
+
+| Part | Pin | Connects to |
+|---|---|---|
+| IRF4905 (P‑MOSFET) | source | +5 V rail |
+| IRF4905 | drain | MOTOR pin |
+| IRF4905 | gate | node D |
+| IRFZ44N (N‑MOSFET) | source | GND |
+| IRFZ44N | drain | MOTOR pin |
+| IRFZ44N | gate | node D |
+| R1 470 Ω | | node D to +5 V |
+| Q1 2N3904 (or 2N2222 / BC337) | collector | node D |
+| Q1 | emitter | GND |
+| Q1 | base | R2 1 kΩ to ESP GPIO |
+| R3 10 kΩ | | ESP GPIO to GND |
+
+GPIO **high** → Q1 on → node D ≈ 0 V → P‑FET on, N‑FET off → motor pin at
+5 V. GPIO **low** → Q1 off → node D pulled to 5 V → P‑FET off, N‑FET on →
+motor pin at GND. A floating GPIO at boot reads low through R3, so both pins
+start grounded. The shared gate node is fine here because gates draw no
+steady current; both FETs are only partially on for a few microseconds
+during each transition, which happens only on level changes.
+
+TO‑220 pinout (flat face toward you, legs down, left→right): **G‑D‑S**; tab
+is drain. 2N3904 (flat face toward you): **E‑B‑C**. IRF9540 substitutes for
+the IRF4905. Do not use the 600 V FQPF parts on the low side; their 3–5 V
+threshold is too high for a 5 V gate. Same truth table and config as the
+relay and BJT bridges; `stall_timeout_ms` can stay at 8000.
+
+## Alternative: bridge from 2N4401 / 2N4403 (BJT only)
 
 If the console bridge is awkward to reuse, this discrete design takes the
 ESP32's 3.3 V GPIOs directly, drives the motor from the 5 V rail, and has no
