@@ -56,6 +56,14 @@ is a single electrode with doubled wiring.
 | Isolated pads | one pad of the left grip | one pad of the right grip | the remaining left pad **and** right pad, joined |
 | Paralleled pads | left grip | right grip | leave unconnected |
 
+On the XP 185 U the grips use the isolated layout. Each grip's two wires land
+on a 4‑pin footprint on the console PCB, and the two **centre pins (the black
+wire from each grip) are tied together** there: that pair is the console's
+shared reference electrode. So: left non‑black → LA, right non‑black → RA,
+both blacks → RL. If you keep the console PCB for its H‑bridge, desolder the
+grip wires from that footprint (or cut its outgoing traces) so the old
+amplifier no longer loads the electrodes.
+
 Do **not** tie any electrode to ESP ground. RL is the driven‑right‑leg output;
 the chip actively drives it to mid‑supply to cancel common‑mode noise, and
 grounding an electrode defeats that.
