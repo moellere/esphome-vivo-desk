@@ -120,15 +120,22 @@ Follow the two motor wires back into the console PCB.
   datasheet's truth table; some parts treat both‑high as *brake*, some as
   *forbidden*.
 - **Discrete transistors** (the XP 185 U: a 2N4403 PNP high side and a 2N4401
-  NPN low side per motor pin). If the two bases of a leg are tied together
-  and driven from one node, that node must swing the **full rail**: at 3.3 V
-  on a 5 V rail both transistors conduct at once. Never drive it straight
-  from an ESP GPIO. Use a small NPN inverter with a pull‑up to 5 V, or a
-  74AHCT125 buffer powered from 5 V, per leg (an inverter flips the sense;
-  set `in1_raises_pot` accordingly). With full‑swing drive this topology
-  cannot shoot through leg‑to‑leg: both inputs high or both low simply
-  parks both motor leads on the same rail. If instead the four bases are
-  driven separately, the config needs four outputs with interlocking; ask.
+  NPN low side per motor pin, each driven by an MMBT4401 SOT‑23 pre‑driver
+  marked `2X`, through a 220 Ω base resistor, with a 2.2 kΩ resistor from
+  the blob into each pre‑driver's base). **Intercept at the 2.2 kΩ
+  resistors, not at the output transistor bases**: they are logic‑level
+  inputs and a 3.3 V GPIO drives an MMBT4401 base fine. Remove each 2.2 kΩ
+  0805, solder a through‑hole 2.2 kΩ from the GPIO wire to the pad on the
+  pre‑driver side, leave the blob‑side pad empty, and add 10 kΩ from each
+  GPIO to GND. Before cutting, meter: which pre‑driver feeds which output
+  transistor, whether each pre‑driver is common‑emitter (emitter to GND)
+  or an emitter follower (collector to 5 V), and whether the four blob‑side
+  nets are paired (PNP‑A with NPN‑B, PNP‑B with NPN‑A → two GPIOs, config
+  as written) or all separate (four GPIOs; ask for the config change).
+  Never drive the 2N4401/2N4403 bases straight from a GPIO: on a 5 V rail
+  a 3.3 V level turns both halves of a leg on at once. At 3.3 V input the
+  low side gets roughly half the base current it had from the blob, so set
+  `stall_timeout_ms` to `4000`.
 
 If the bridge turns out to be discrete, weigh the time against a DRV8833 module.
 
