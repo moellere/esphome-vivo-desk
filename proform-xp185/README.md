@@ -63,6 +63,9 @@ it the full 5 V.
 | AD8232 LO+ / LO‑ | GPIO32 / GPIO33 | Lead‑off detect |
 | AD8232 SDN | GPIO25 | Exposed as the "Grip ECG Amplifier" switch |
 | AD8232 3.3V / GND | 3V3 / GND | |
+| Resistance dial A / B | GPIO16 / GPIO17 | Encoder common to GND; internal pull‑ups |
+| Console button 1 / 2 | GPIO21 / GPIO22 | Button common to GND; internal pull‑ups |
+| Buzzer | GPIO23 | See *Console controls* |
 
 ### Grip electrodes → AD8232
 
@@ -88,6 +91,24 @@ the chip actively drives it to mid‑supply to cancel common‑mode noise, and
 grounding an electrode defeats that.
 
 Keep the four grip wires twisted, short, and away from the motor leads.
+
+### Console controls
+
+The console's resistance dial is a 3‑wire quadrature encoder (A, B, common),
+the two buttons share a common, and the buzzer is a two‑terminal piezo. All
+three carry over:
+
+- **Dial**: each detent steps **Resistance Level** by one. If one detent
+  moves it by two or four, raise `encoder_resolution` to `2` or `4`.
+- **Button 1** resets the crank revolution counter and beeps. **Button 2**
+  only beeps; both are exposed to Home Assistant as binary sensors for your
+  own automations.
+- **Buzzer**: short chirp on a level change, two‑tone on reset, three slow
+  beeps on a brake motor fault. A piezo *disc* can hang straight off the GPIO
+  (add a 100 Ω to 1 kΩ series resistor if you like). If the part is a
+  *magnetic* buzzer instead (a coil that meters at a few tens of ohms), drive
+  it through an NPN transistor with a flyback diode; it will draw more than a
+  GPIO can source.
 
 ## Reusing the console's H‑bridge
 
@@ -147,6 +168,7 @@ or a jam. Fix the cause and change the level again to clear it.
 | Hands On Grips | binary | Both electrodes in contact |
 | Brake Position, Brake Moving, Brake Motor Fault | diagnostics | Loop state |
 | Brake Jog IN1 / IN2 / Stop | buttons | Calibration and manual override |
+| Console Button 1 / 2 | binary | Physical buttons on the console |
 | Grip ECG Amplifier | switch | AD8232 SDN |
 
 ## Secrets

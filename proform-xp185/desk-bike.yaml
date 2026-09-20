@@ -5,6 +5,8 @@
 #     own bridge with its inputs rewired, or a DRV8833 / TB6612 module) to one of
 #     8 resistance levels, closed loop on the motor's feedback potentiometer.
 #   - Reads cadence from the crank reed switch.
+#   - Keeps the console's resistance dial (rotary encoder), two buttons and
+#     piezo buzzer as local controls and feedback.
 #   - Heart rate from a BLE chest strap (preferred) or from the handlebar grip
 #     electrodes through an AD8232 ECG front end (spot checks only).
 #   - Everything is exposed to Home Assistant over the native API.
@@ -27,6 +29,11 @@ substitutions:
   pin_ecg_lo_plus: GPIO32     # AD8232 LO+
   pin_ecg_lo_minus: GPIO33    # AD8232 LO-
   pin_ecg_sdn: GPIO25         # AD8232 SDN (high = amplifier running)
+  pin_encoder_a: GPIO16       # console resistance dial (quadrature A)
+  pin_encoder_b: GPIO17       # console resistance dial (quadrature B), common to GND
+  pin_button_1: GPIO21        # console button 1, common to GND
+  pin_button_2: GPIO22        # console button 2, common to GND
+  pin_buzzer: GPIO23          # console piezo (PWM); see README if it is a magnetic buzzer
 
   # --- brake calibration (MEASURE, see README) -------------------------------
   pot_v_level1: "0.40"        # wiper volts at the lightest setting
@@ -34,6 +41,9 @@ substitutions:
   in1_raises_pot: "true"      # does energising IN1 make the wiper voltage rise?
   deadband_v: "0.04"          # stop when within this many volts of target
   stall_timeout_ms: "8000"    # give up (and flag a fault) after this long moving
+
+  # --- console controls ------------------------------------------------------
+  encoder_resolution: "1"     # 1, 2 or 4: raise it if one detent moves more than one level
 
   # --- heart rate ------------------------------------------------------------
   hrm_mac: "00:00:00:00:00:00"  # BLE strap MAC; ESPHome logs nearby devices at boot
@@ -109,6 +119,15 @@ output:
   - platform: gpio
     pin: ${pin_bridge_in2}
     id: brake_in2
+  - platform: ledc
+    pin: ${pin_buzzer}
+    id: buzzer_pwm
+
+# Console piezo. rtttl drives a passive buzzer with a tone; play short
+# ringtone strings from automations.
+rtttl:
+  output: buzzer_pwm
+  id: buzzer
 
 # ---------------------------------------------------------------------------
 # Raw ADC inputs. update_interval: never -> sampled from the loops below so the
@@ -128,6 +147,26 @@ sensor:
     attenuation: 12db
     update_interval: never
     internal: true
+
+  # Console resistance dial: each detent steps the level by one.
+  - platform: rotary_encoder
+    id: resistance_dial
+    internal: true
+    pin_a:
+      number: ${pin_encoder_a}
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: ${pin_encoder_b}
+      mode:
+        input: true
+        pullup: true
+    resolution: ${encoder_resolution}
+    on_clockwise:
+      - number.increment: resistance_level
+    on_anticlockwise:
+      - number.decrement: resistance_level
 
   # Published copy of the filtered wiper voltage, for calibration and debugging
   - platform: template
@@ -243,6 +282,7 @@ number:
           id(move_started) = millis();
           id(moving) = true;
           ESP_LOGI("brake", "Level %.0f -> target %.3f V", level, id(target_v));
+      - rtttl.play: "level:d=32,o=6,b=240:c"
 
 binary_sensor:
   - platform: template
@@ -261,6 +301,41 @@ binary_sensor:
     name: "Pedaling"
     device_class: motion
     lambda: return id(cadence).has_state() && id(cadence).state > 0;
+
+  # Console buttons (common to GND). Button 1 resets the revolution counter;
+  # button 2 is exposed for your own automations (both are visible in HA).
+  - platform: gpio
+    name: "Console Button 1"
+    id: button_1
+    pin:
+      number: ${pin_button_1}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      - pulse_meter.set_total_pulses:
+          id: cadence
+          value: 0
+      - rtttl.play: "reset:d=16,o=6,b=200:c,e"
+
+  - platform: gpio
+    name: "Console Button 2"
+    id: button_2
+    pin:
+      number: ${pin_button_2}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      - rtttl.play: "click:d=32,o=6,b=240:e"
 
   # AD8232 lead-off detect: high = that electrode has lost skin contact
   - platform: gpio
@@ -361,6 +436,7 @@ interval:
             id(moving) = false;
             id(last_dir) = 0;
             id(motor_fault).publish_state(true);
+            id(buzzer).play("fault:d=8,o=5,b=180:c,p,c,p,c");
             ESP_LOGE("brake", "Stall timeout: pos %.3f V, target %.3f V", pos, id(target_v));
             return;
           }
