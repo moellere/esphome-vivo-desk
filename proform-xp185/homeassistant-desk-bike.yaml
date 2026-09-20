@@ -1,0 +1,45 @@
+# Home Assistant package: distance per day / week / month / year from the
+# bike's lifetime odometer, plus a notification when a milestone unlocks.
+#
+# Install: copy to <config>/packages/desk_bike.yaml with
+#   homeassistant:
+#     packages: !include_dir_named packages
+# in configuration.yaml, then restart HA. (The same four meters can instead be
+# created in the UI: Settings -> Helpers -> Utility Meter.)
+#
+# Entity ids: the ESPHome config sets friendly_name "Desk Bike" and also
+# prefixes each entity name with "Desk Bike", so HA doubles it:
+# sensor.desk_bike_desk_bike_odometer. Check the real id under the device
+# page and adjust `source:` if yours differs.
+
+utility_meter:
+  desk_bike_distance_daily:
+    name: Desk Bike Distance Today
+    source: sensor.desk_bike_desk_bike_odometer
+    cycle: daily
+  desk_bike_distance_weekly:
+    name: Desk Bike Distance This Week
+    source: sensor.desk_bike_desk_bike_odometer
+    cycle: weekly
+  desk_bike_distance_monthly:
+    name: Desk Bike Distance This Month
+    source: sensor.desk_bike_desk_bike_odometer
+    cycle: monthly
+  desk_bike_distance_yearly:
+    name: Desk Bike Distance This Year
+    source: sensor.desk_bike_desk_bike_odometer
+    cycle: yearly
+
+automation:
+  - id: desk_bike_milestone
+    alias: Desk Bike milestone reached
+    trigger:
+      - platform: event
+        event_type: esphome.desk_bike_milestone
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Desk Bike milestone"
+          message: >-
+            You rode the distance of {{ trigger.event.data.title }}
+            ({{ trigger.event.data.odometer_km | float(0) | round(1) }} km total).
