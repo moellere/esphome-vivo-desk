@@ -1,0 +1,419 @@
+# ProForm XP 185 U as an under-desk bike, console replaced by an ESP32.
+#
+# What this does
+#   - Drives the 6 V magnetic-brake gearmotor through an H-bridge (the console's
+#     own bridge with its inputs rewired, or a DRV8833 / TB6612 module) to one of
+#     8 resistance levels, closed loop on the motor's feedback potentiometer.
+#   - Reads cadence from the crank reed switch.
+#   - Heart rate from a BLE chest strap (preferred) or from the handlebar grip
+#     electrodes through an AD8232 ECG front end (spot checks only).
+#   - Everything is exposed to Home Assistant over the native API.
+#
+# Before first use: follow the calibration steps in README.md and fill in the
+# substitutions marked "MEASURE".
+# ---------------------------------------------------------------------------
+
+substitutions:
+  name: desk-bike
+  friendly_name: Desk Bike
+  board: esp32dev
+
+  # --- pins (esp32dev defaults; all safe at boot, ADC pins on ADC1) ---------
+  pin_bridge_in1: GPIO18      # H-bridge input 1 (10k pull-down to GND)
+  pin_bridge_in2: GPIO19      # H-bridge input 2 (10k pull-down to GND)
+  pin_pot_wiper: GPIO34       # brake motor feedback pot wiper (pot ends on 3V3 / GND)
+  pin_reed: GPIO27            # crank reed switch, other side to GND
+  pin_ecg_out: GPIO35         # AD8232 OUTPUT
+  pin_ecg_lo_plus: GPIO32     # AD8232 LO+
+  pin_ecg_lo_minus: GPIO33    # AD8232 LO-
+  pin_ecg_sdn: GPIO25         # AD8232 SDN (high = amplifier running)
+
+  # --- brake calibration (MEASURE, see README) -------------------------------
+  pot_v_level1: "0.40"        # wiper volts at the lightest setting
+  pot_v_level8: "2.90"        # wiper volts at the heaviest setting
+  in1_raises_pot: "true"      # does energising IN1 make the wiper voltage rise?
+  deadband_v: "0.04"          # stop when within this many volts of target
+  stall_timeout_ms: "8000"    # give up (and flag a fault) after this long moving
+
+  # --- heart rate ------------------------------------------------------------
+  hrm_mac: "00:00:00:00:00:00"  # BLE strap MAC; ESPHome logs nearby devices at boot
+  ecg_threshold_v: "0.25"       # R-peak height above baseline, tune from raw log
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret bike_api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+# ---------------------------------------------------------------------------
+# State shared between the control loop and the entities
+# ---------------------------------------------------------------------------
+globals:
+  - id: brake_pos            # filtered wiper voltage
+    type: float
+    initial_value: "NAN"
+  - id: target_v             # wiper voltage we are driving toward
+    type: float
+    initial_value: "NAN"
+  - id: moving
+    type: bool
+    initial_value: "false"
+  - id: move_started
+    type: uint32_t
+    initial_value: "0"
+  - id: last_dir             # -1, 0, +1 : which bridge leg was last energised
+    type: int
+    initial_value: "0"
+  - id: strap_hr_val
+    type: float
+    initial_value: "NAN"
+  - id: strap_hr_at
+    type: uint32_t
+    initial_value: "0"
+  - id: grip_hr_val
+    type: float
+    initial_value: "NAN"
+  - id: grip_hr_at
+    type: uint32_t
+    initial_value: "0"
+
+# ---------------------------------------------------------------------------
+# H-bridge
+# ---------------------------------------------------------------------------
+output:
+  - platform: gpio
+    pin: ${pin_bridge_in1}
+    id: brake_in1
+  - platform: gpio
+    pin: ${pin_bridge_in2}
+    id: brake_in2
+
+# ---------------------------------------------------------------------------
+# Raw ADC inputs. update_interval: never -> sampled from the loops below so the
+# log is not flooded with per-sample debug lines.
+# ---------------------------------------------------------------------------
+sensor:
+  - platform: adc
+    pin: ${pin_pot_wiper}
+    id: pot_adc
+    attenuation: 12db
+    update_interval: never
+    internal: true
+
+  - platform: adc
+    pin: ${pin_ecg_out}
+    id: ecg_adc
+    attenuation: 12db
+    update_interval: never
+    internal: true
+
+  # Published copy of the filtered wiper voltage, for calibration and debugging
+  - platform: template
+    name: "Brake Position"
+    id: brake_pos_sensor
+    unit_of_measurement: V
+    accuracy_decimals: 3
+    icon: mdi:sine-wave
+    entity_category: diagnostic
+    update_interval: 1s
+    lambda: return id(brake_pos);
+
+  # Cadence: one crank magnet -> pulses per minute == rpm
+  - platform: pulse_meter
+    name: "Cadence"
+    id: cadence
+    pin:
+      number: ${pin_reed}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    unit_of_measurement: rpm
+    icon: mdi:bike
+    accuracy_decimals: 0
+    internal_filter: 20ms
+    timeout: 4s
+    total:
+      name: "Crank Revolutions"
+      unit_of_measurement: rev
+      accuracy_decimals: 0
+      icon: mdi:counter
+      state_class: total_increasing
+
+  # Combined heart rate: strap if it reported in the last 15 s, otherwise the
+  # grip electrodes while both hands are on, otherwise unavailable.
+  - platform: template
+    name: "Heart Rate"
+    id: heart_rate
+    unit_of_measurement: bpm
+    accuracy_decimals: 0
+    icon: mdi:heart-pulse
+    update_interval: 2s
+    lambda: |-
+      uint32_t now = millis();
+      if (!isnan(id(strap_hr_val)) && now - id(strap_hr_at) < 15000) return id(strap_hr_val);
+      if (id(hands_on).state && !isnan(id(grip_hr_val)) && now - id(grip_hr_at) < 10000) return id(grip_hr_val);
+      return NAN;
+
+  - platform: template
+    name: "Grip Heart Rate"
+    unit_of_measurement: bpm
+    accuracy_decimals: 0
+    icon: mdi:hand-heart
+    entity_category: diagnostic
+    update_interval: 2s
+    lambda: |-
+      if (id(hands_on).state && !isnan(id(grip_hr_val)) && millis() - id(grip_hr_at) < 10000) return id(grip_hr_val);
+      return NAN;
+
+  # BLE chest strap (standard Heart Rate Service). Delete this block and the
+  # esp32_ble_tracker / ble_client sections if you have no strap.
+  - platform: ble_client
+    type: characteristic
+    ble_client_id: hrm
+    name: "Strap Heart Rate"
+    id: strap_hr
+    service_uuid: '180d'
+    characteristic_uuid: '2a37'
+    notify: true
+    update_interval: never
+    unit_of_measurement: bpm
+    accuracy_decimals: 0
+    icon: mdi:heart
+    entity_category: diagnostic
+    lambda: |-
+      if (x.size() < 2) return NAN;
+      uint16_t hr = x[1];
+      if ((x[0] & 1) && x.size() >= 3) hr |= (x[2] << 8);   // flag bit 0: 16-bit value
+      return (float) hr;
+    on_value:
+      - lambda: |-
+          if (!isnan(x) && x > 0) { id(strap_hr_val) = x; id(strap_hr_at) = millis(); }
+
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: ${hrm_mac}
+    id: hrm
+
+# ---------------------------------------------------------------------------
+# Resistance level 1..8 -> target wiper voltage -> closed loop below
+# ---------------------------------------------------------------------------
+number:
+  - platform: template
+    name: "Resistance Level"
+    id: resistance_level
+    icon: mdi:speedometer
+    min_value: 1
+    max_value: 8
+    step: 1
+    mode: slider
+    optimistic: true
+    restore_value: true
+    initial_value: 1
+    on_value:
+      - lambda: |-
+          const float v1 = ${pot_v_level1};
+          const float v8 = ${pot_v_level8};
+          float level = x < 1 ? 1 : (x > 8 ? 8 : x);
+          id(target_v) = v1 + (level - 1.0f) * (v8 - v1) / 7.0f;
+          id(motor_fault).publish_state(false);
+          id(move_started) = millis();
+          id(moving) = true;
+          ESP_LOGI("brake", "Level %.0f -> target %.3f V", level, id(target_v));
+
+binary_sensor:
+  - platform: template
+    name: "Brake Motor Fault"
+    id: motor_fault
+    device_class: problem
+    entity_category: diagnostic
+
+  - platform: template
+    name: "Brake Moving"
+    device_class: moving
+    entity_category: diagnostic
+    lambda: return id(moving);
+
+  - platform: template
+    name: "Pedaling"
+    device_class: motion
+    lambda: return id(cadence).has_state() && id(cadence).state > 0;
+
+  # AD8232 lead-off detect: high = that electrode has lost skin contact
+  - platform: gpio
+    pin:
+      number: ${pin_ecg_lo_plus}
+      mode:
+        input: true
+    id: lo_plus
+    internal: true
+  - platform: gpio
+    pin:
+      number: ${pin_ecg_lo_minus}
+      mode:
+        input: true
+    id: lo_minus
+    internal: true
+  - platform: template
+    name: "Hands On Grips"
+    id: hands_on
+    icon: mdi:hand-back-left
+    lambda: return id(ecg_enable).state && !id(lo_plus).state && !id(lo_minus).state;
+
+switch:
+  - platform: gpio
+    pin: ${pin_ecg_sdn}
+    name: "Grip ECG Amplifier"
+    id: ecg_enable
+    icon: mdi:heart-pulse
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+
+button:
+  # Calibration helpers: nudge the motor 250 ms on one bridge leg and stop.
+  - platform: template
+    name: "Brake Jog IN1"
+    icon: mdi:arrow-right-bold
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(moving) = false;
+          id(last_dir) = 0;
+      - output.turn_off: brake_in2
+      - output.turn_on: brake_in1
+      - delay: 250ms
+      - output.turn_off: brake_in1
+
+  - platform: template
+    name: "Brake Jog IN2"
+    icon: mdi:arrow-left-bold
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(moving) = false;
+          id(last_dir) = 0;
+      - output.turn_off: brake_in1
+      - output.turn_on: brake_in2
+      - delay: 250ms
+      - output.turn_off: brake_in2
+
+  - platform: template
+    name: "Brake Stop"
+    icon: mdi:stop
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(moving) = false;
+          id(last_dir) = 0;
+      - output.turn_off: brake_in1
+      - output.turn_off: brake_in2
+
+  - platform: restart
+    name: "Restart"
+    entity_category: diagnostic
+
+# ---------------------------------------------------------------------------
+# Loops
+# ---------------------------------------------------------------------------
+interval:
+  # Brake position loop, 20 Hz.
+  - interval: 50ms
+    then:
+      - lambda: |-
+          // Sample and lightly filter the wiper.
+          float raw = id(pot_adc).sample();
+          if (!isnan(raw)) {
+            if (isnan(id(brake_pos))) id(brake_pos) = raw;
+            else id(brake_pos) += 0.3f * (raw - id(brake_pos));
+          }
+          if (!id(moving)) return;
+
+          float pos = id(brake_pos);
+          if (isnan(pos) || isnan(id(target_v))) { id(move_started) = millis(); return; }
+
+          // Stall / runaway guard.
+          if (millis() - id(move_started) > ${stall_timeout_ms}) {
+            id(brake_in1).turn_off();
+            id(brake_in2).turn_off();
+            id(moving) = false;
+            id(last_dir) = 0;
+            id(motor_fault).publish_state(true);
+            ESP_LOGE("brake", "Stall timeout: pos %.3f V, target %.3f V", pos, id(target_v));
+            return;
+          }
+
+          float err = id(target_v) - pos;
+          int dir = 0;
+          if (fabsf(err) > ${deadband_v}) dir = (err > 0) ? 1 : -1;
+
+          if (dir == 0) {
+            id(brake_in1).turn_off();
+            id(brake_in2).turn_off();
+            id(moving) = false;
+            id(last_dir) = 0;
+            ESP_LOGI("brake", "Reached %.3f V (target %.3f V)", pos, id(target_v));
+            return;
+          }
+
+          // Never switch legs directly: pass through the all-off state for one
+          // tick (50 ms dead time) so the bridge can never shoot through.
+          if (dir != id(last_dir)) {
+            id(brake_in1).turn_off();
+            id(brake_in2).turn_off();
+            if (id(last_dir) != 0) { id(last_dir) = 0; return; }
+          }
+
+          const bool in1_raises = ${in1_raises_pot};
+          bool use_in1 = (dir > 0) == in1_raises;
+          if (use_in1) id(brake_in1).turn_on(); else id(brake_in2).turn_on();
+          id(last_dir) = dir;
+
+  # Grip ECG sampling, ~250 Hz. Simple baseline-tracking R-peak detector.
+  - interval: 4ms
+    then:
+      - lambda: |-
+          static float baseline = 1.65f;
+          static uint32_t last_beat = 0;
+          static float ibi[4] = {0, 0, 0, 0};
+          static uint8_t n = 0;
+
+          if (!id(hands_on).state) { n = 0; last_beat = 0; return; }
+          float x = id(ecg_adc).sample();
+          if (isnan(x)) return;
+
+          baseline += 0.01f * (x - baseline);      // slow high-pass
+          float v = x - baseline;
+          uint32_t now = millis();
+
+          if (v > ${ecg_threshold_v} && now - last_beat > 300) {   // 300 ms refractory
+            if (last_beat != 0) { ibi[n % 4] = now - last_beat; n++; }
+            last_beat = now;
+            if (n >= 4) {
+              float avg = (ibi[0] + ibi[1] + ibi[2] + ibi[3]) / 4.0f;
+              float bpm = 60000.0f / avg;
+              if (bpm > 30 && bpm < 220) { id(grip_hr_val) = bpm; id(grip_hr_at) = now; }
+            }
+          }
