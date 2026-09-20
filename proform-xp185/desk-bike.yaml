@@ -1,41 +1,45 @@
-# ProForm XP 185 U as an under-desk bike, console replaced by an ESP32.
+# ProForm XP 185 U as an under-desk bike, driven by an ESP32.
 #
-# What this does
-#   - Drives the 6 V magnetic-brake gearmotor through an H-bridge (the console's
-#     own bridge with its inputs rewired, or a DRV8833 / TB6612 module) to one of
-#     8 resistance levels, closed loop on the motor's feedback potentiometer.
-#     A pair of SPDT relays works too (set bridge_active_low for active-low
-#     relay boards).
-#   - Reads cadence from the crank reed switch.
-#   - Keeps the console's resistance dial (rotary encoder), two buttons and
-#     piezo buzzer as local controls and feedback.
-#   - Heart rate from a BLE chest strap (preferred) or from the handlebar grip
-#     electrodes through an AD8232 ECG front end (spot checks only).
-#   - Everything is exposed to Home Assistant over the native API.
+# The bike's original console and handlebars stay intact and unplugged; the
+# ESP takes over the 8-pin harness from the base and reproduces what the
+# console did:
+#   - drives the 6 V magnetic-brake gearmotor through an H-bridge (MOSFET
+#     half-bridges, a DRV8833/TB6612 module, or a dual relay board) to one of
+#     8 resistance levels, closed loop on the motor's feedback potentiometer
+#   - reads cadence from the crank reed switch; tracks ride time and distance
+#   - heart rate from a BLE chest strap
+#   - a 1.3" OLED + EC11 encoder module (SH1116/EC11, I2C) is the local UI:
+#       turn      = resistance level
+#       push      = next page;  hold 1-2 s = reset ride
+#       Back      = drop to level 1 (coast);  Confirm = restore previous level
 #
-# Before first use: follow the calibration steps in README.md and fill in the
-# substitutions marked "MEASURE".
+# Drop this file into your ESPHome config dir next to common/ (base.yaml,
+# sensor.yaml, fonts/). Fill in the substitutions marked "MEASURE" after the
+# calibration steps in README.md.
 # ---------------------------------------------------------------------------
 
 substitutions:
-  name: desk-bike
-  friendly_name: Desk Bike
-  board: esp32dev
+  devicename: desk-bike
+  upper_devicename: "Desk Bike"
+  lcd_width: '128'
+  lcd_height: '64'
 
-  # --- pins (esp32dev defaults; all safe at boot, ADC pins on ADC1) ---------
-  pin_bridge_in1: GPIO18      # H-bridge input 1 (10k pull-down to GND)
-  pin_bridge_in2: GPIO19      # H-bridge input 2 (10k pull-down to GND)
-  pin_pot_wiper: GPIO34       # brake motor feedback pot wiper (pot ends on 3V3 / GND)
-  pin_reed: GPIO27            # crank reed switch, other side to GND
-  pin_ecg_out: GPIO35         # AD8232 OUTPUT
-  pin_ecg_lo_plus: GPIO32     # AD8232 LO+
-  pin_ecg_lo_minus: GPIO33    # AD8232 LO-
-  pin_ecg_sdn: GPIO25         # AD8232 SDN (high = amplifier running)
-  pin_encoder_a: GPIO16       # console resistance dial (quadrature A)
-  pin_encoder_b: GPIO17       # console resistance dial (quadrature B), common to GND
-  pin_button_1: GPIO21        # console button 1, common to GND
-  pin_button_2: GPIO22        # console button 2, common to GND
-  pin_buzzer: GPIO23          # console piezo (PWM); see README if it is a magnetic buzzer
+  # --- Pin map: ESP32 (esp32dev) <-> bike harness + OLED/encoder module -----
+  # All safe at boot; ADC on ADC1 (GPIO32-39) so it works alongside Wi-Fi.
+  pin_bridge_in1: GPIO18   # H-bridge input 1 (10k pull-down to GND)
+  pin_bridge_in2: GPIO19   # H-bridge input 2 (10k pull-down to GND)
+  pin_pot: GPIO34          # brake motor feedback pot wiper (pot ends on 3V3 / GND)
+  pin_reed: GPIO27         # crank reed switch, other side to GND
+  pin_sda: GPIO21          # OLED I2C SDA
+  pin_scl: GPIO22          # OLED I2C SCL
+  pin_enc_a: GPIO16        # rotary encoder phase A (CLK)
+  pin_enc_b: GPIO17        # rotary encoder phase B (DT)
+  pin_button: GPIO25       # encoder push-button (PSH)
+  pin_back: GPIO26         # "Back" tactile button (BAK / KEY0)
+  pin_confirm: GPIO33      # "Confirm" tactile button (CON / KEY1)
+  # ESP32-C3 Super Mini alternative (untested; needs logger on USB_SERIAL_JTAG
+  # so GPIO20/21 are free): in1 GPIO20, in2 GPIO21, pot GPIO4, reed GPIO5,
+  # sda 6, scl 7, enc_a 2, enc_b 0, button 1, back 10, confirm 3.
 
   # --- bridge type -----------------------------------------------------------
   bridge_active_low: "false"  # "true" for relay boards whose IN pins energise when pulled low
@@ -47,76 +51,97 @@ substitutions:
   deadband_v: "0.04"          # stop when within this many volts of target
   stall_timeout_ms: "8000"    # give up (and flag a fault) after this long moving
 
-  # --- console controls ------------------------------------------------------
+  # --- ride tracking ---------------------------------------------------------
   encoder_resolution: "1"     # 1, 2 or 4: raise it if one detent moves more than one level
+  meters_per_rev: "4.6"       # virtual distance per crank revolution (tune to taste)
 
   # --- heart rate ------------------------------------------------------------
   hrm_mac: "00:00:00:00:00:00"  # BLE strap MAC; ESPHome logs nearby devices at boot
-  ecg_threshold_v: "0.25"       # R-peak height above baseline, tune from raw log
-
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
 
 esp32:
-  board: ${board}
+  board: esp32dev
   framework:
     type: esp-idf
 
-logger:
+esphome:
+  name: ${devicename}
+  friendly_name: ${upper_devicename}
 
-api:
-  encryption:
-    key: !secret bike_api_key
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 
-ota:
-  - platform: esphome
-    password: !secret ota_password
+# NOTE: a top-level key defined in this file replaces the same key from an
+# include entirely (ESPHome does not deep-merge). So wifi/api/ota/logger are
+# left to base.yaml; set "power_save_mode: none" there, it keeps the BLE strap
+# connection stable. The sensor: key below likewise replaces common/sensor.yaml.
+<<: !include common/base.yaml
+<<: !include common/sensor.yaml
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  ap:
-    ssid: "${friendly_name} Fallback"
-    password: !secret fallback_ap_password
+esp32_ble_tracker:
 
-captive_portal:
+ble_client:
+  - mac_address: ${hrm_mac}
+    id: hrm
 
-# ---------------------------------------------------------------------------
-# State shared between the control loop and the entities
-# ---------------------------------------------------------------------------
+switch:
+  - platform: restart
+    name: "${upper_devicename} Restart"
+
+font:
+  - file: 'common/fonts/slkscr.ttf'
+    id: font1
+    size: 8
+
+  - file: 'common/fonts/BebasNeue-Regular.ttf'
+    id: font2
+    size: 32
+
+  - file: 'common/fonts/arial.ttf'
+    id: font3
+    size: 14
+
 globals:
+  # --- brake loop state ---
   - id: brake_pos            # filtered wiper voltage
     type: float
-    initial_value: "NAN"
+    restore_value: no
+    initial_value: 'NAN'
   - id: target_v             # wiper voltage we are driving toward
     type: float
-    initial_value: "NAN"
+    restore_value: no
+    initial_value: 'NAN'
   - id: moving
     type: bool
-    initial_value: "false"
+    restore_value: no
+    initial_value: 'false'
   - id: move_started
     type: uint32_t
-    initial_value: "0"
+    restore_value: no
+    initial_value: '0'
   - id: last_dir             # -1, 0, +1 : which bridge leg was last energised
     type: int
-    initial_value: "0"
-  - id: strap_hr_val
-    type: float
-    initial_value: "NAN"
-  - id: strap_hr_at
+    restore_value: no
+    initial_value: '0'
+  - id: coast_return_level   # level to restore after "Back" (0 = none)
+    type: int
+    restore_value: no
+    initial_value: '0'
+  # --- ride state ---
+  - id: ride_seconds         # seconds spent pedaling this session
     type: uint32_t
-    initial_value: "0"
-  - id: grip_hr_val
+    restore_value: no
+    initial_value: '0'
+  - id: session_start_revs   # crank total at the last reset
     type: float
-    initial_value: "NAN"
-  - id: grip_hr_at
-    type: uint32_t
-    initial_value: "0"
+    restore_value: no
+    initial_value: '0'
 
-# ---------------------------------------------------------------------------
-# H-bridge
-# ---------------------------------------------------------------------------
+i2c:
+  sda: ${pin_sda}
+  scl: ${pin_scl}
+  frequency: 400kHz
+
 output:
   - platform: gpio
     pin:
@@ -128,58 +153,36 @@ output:
       number: ${pin_bridge_in2}
       inverted: ${bridge_active_low}
     id: brake_in2
-  - platform: ledc
-    pin: ${pin_buzzer}
-    id: buzzer_pwm
 
-# Console piezo. rtttl drives a passive buzzer with a tone; play short
-# ringtone strings from automations.
-rtttl:
-  output: buzzer_pwm
-  id: buzzer
-
-# ---------------------------------------------------------------------------
-# Raw ADC inputs. update_interval: never -> sampled from the loops below so the
-# log is not flooded with per-sample debug lines.
-# ---------------------------------------------------------------------------
 sensor:
-  - platform: adc
-    pin: ${pin_pot_wiper}
-    id: pot_adc
-    attenuation: 12db
-    update_interval: never
-    internal: true
-
-  - platform: adc
-    pin: ${pin_ecg_out}
-    id: ecg_adc
-    attenuation: 12db
-    update_interval: never
-    internal: true
-
-  # Console resistance dial: each detent steps the level by one.
   - platform: rotary_encoder
+    name: "${upper_devicename} Encoder"
     id: resistance_dial
     internal: true
     pin_a:
-      number: ${pin_encoder_a}
-      mode:
-        input: true
-        pullup: true
+      number: ${pin_enc_a}
+      mode: INPUT_PULLUP
     pin_b:
-      number: ${pin_encoder_b}
-      mode:
-        input: true
-        pullup: true
+      number: ${pin_enc_b}
+      mode: INPUT_PULLUP
     resolution: ${encoder_resolution}
     on_clockwise:
       - number.increment: resistance_level
     on_anticlockwise:
       - number.decrement: resistance_level
 
-  # Published copy of the filtered wiper voltage, for calibration and debugging
+  # Raw pot ADC. update_interval: never -> sampled from the brake loop so the
+  # log is not flooded with per-sample debug lines.
+  - platform: adc
+    pin: ${pin_pot}
+    id: pot_adc
+    attenuation: 12db
+    update_interval: never
+    internal: true
+
+  # Published copy of the filtered wiper voltage, for calibration/debugging
   - platform: template
-    name: "Brake Position"
+    name: "${upper_devicename} Brake Position"
     id: brake_pos_sensor
     unit_of_measurement: V
     accuracy_decimals: 3
@@ -190,13 +193,11 @@ sensor:
 
   # Cadence: one crank magnet -> pulses per minute == rpm
   - platform: pulse_meter
-    name: "Cadence"
+    name: "${upper_devicename} Cadence"
     id: cadence
     pin:
       number: ${pin_reed}
-      mode:
-        input: true
-        pullup: true
+      mode: INPUT_PULLUP
       inverted: true
     unit_of_measurement: rpm
     icon: mdi:bike
@@ -204,74 +205,57 @@ sensor:
     internal_filter: 20ms
     timeout: 4s
     total:
-      name: "Crank Revolutions"
+      name: "${upper_devicename} Crank Revolutions"
+      id: crank_total
       unit_of_measurement: rev
       accuracy_decimals: 0
       icon: mdi:counter
       state_class: total_increasing
 
-  # Combined heart rate: strap if it reported in the last 15 s, otherwise the
-  # grip electrodes while both hands are on, otherwise unavailable.
   - platform: template
-    name: "Heart Rate"
-    id: heart_rate
-    unit_of_measurement: bpm
-    accuracy_decimals: 0
-    icon: mdi:heart-pulse
-    update_interval: 2s
-    lambda: |-
-      uint32_t now = millis();
-      if (!isnan(id(strap_hr_val)) && now - id(strap_hr_at) < 15000) return id(strap_hr_val);
-      if (id(hands_on).state && !isnan(id(grip_hr_val)) && now - id(grip_hr_at) < 10000) return id(grip_hr_val);
-      return NAN;
+    name: "${upper_devicename} Ride Time"
+    id: ride_time
+    unit_of_measurement: min
+    accuracy_decimals: 1
+    icon: mdi:timer-outline
+    update_interval: 5s
+    lambda: return id(ride_seconds) / 60.0f;
 
   - platform: template
-    name: "Grip Heart Rate"
-    unit_of_measurement: bpm
-    accuracy_decimals: 0
-    icon: mdi:hand-heart
-    entity_category: diagnostic
-    update_interval: 2s
+    name: "${upper_devicename} Ride Distance"
+    id: ride_distance
+    unit_of_measurement: km
+    accuracy_decimals: 2
+    icon: mdi:map-marker-distance
+    update_interval: 5s
     lambda: |-
-      if (id(hands_on).state && !isnan(id(grip_hr_val)) && millis() - id(grip_hr_at) < 10000) return id(grip_hr_val);
-      return NAN;
+      if (!id(crank_total).has_state()) return 0.0f;
+      float revs = id(crank_total).state - id(session_start_revs);
+      if (revs < 0) revs = 0;
+      return revs * ${meters_per_rev} / 1000.0f;
 
-  # BLE chest strap (standard Heart Rate Service). Delete this block and the
-  # esp32_ble_tracker / ble_client sections if you have no strap.
+  # BLE chest strap (standard Heart Rate Service)
   - platform: ble_client
     type: characteristic
     ble_client_id: hrm
-    name: "Strap Heart Rate"
-    id: strap_hr
+    name: "${upper_devicename} Heart Rate"
+    id: heart_rate
     service_uuid: '180d'
     characteristic_uuid: '2a37'
     notify: true
     update_interval: never
     unit_of_measurement: bpm
     accuracy_decimals: 0
-    icon: mdi:heart
-    entity_category: diagnostic
+    icon: mdi:heart-pulse
     lambda: |-
       if (x.size() < 2) return NAN;
       uint16_t hr = x[1];
       if ((x[0] & 1) && x.size() >= 3) hr |= (x[2] << 8);   // flag bit 0: 16-bit value
-      return (float) hr;
-    on_value:
-      - lambda: |-
-          if (!isnan(x) && x > 0) { id(strap_hr_val) = x; id(strap_hr_at) = millis(); }
+      return hr > 0 ? (float) hr : NAN;
 
-esp32_ble_tracker:
-
-ble_client:
-  - mac_address: ${hrm_mac}
-    id: hrm
-
-# ---------------------------------------------------------------------------
-# Resistance level 1..8 -> target wiper voltage -> closed loop below
-# ---------------------------------------------------------------------------
 number:
   - platform: template
-    name: "Resistance Level"
+    name: "${upper_devicename} Resistance Level"
     id: resistance_level
     icon: mdi:speedometer
     min_value: 1
@@ -291,95 +275,95 @@ number:
           id(move_started) = millis();
           id(moving) = true;
           ESP_LOGI("brake", "Level %.0f -> target %.3f V", level, id(target_v));
-      - rtttl.play: "level:d=32,o=6,b=240:c"
+      - component.update: oled
 
 binary_sensor:
   - platform: template
-    name: "Brake Motor Fault"
+    name: "${upper_devicename} Brake Motor Fault"
     id: motor_fault
     device_class: problem
     entity_category: diagnostic
 
   - platform: template
-    name: "Brake Moving"
+    name: "${upper_devicename} Brake Moving"
     device_class: moving
     entity_category: diagnostic
     lambda: return id(moving);
 
   - platform: template
-    name: "Pedaling"
+    name: "${upper_devicename} Pedaling"
     device_class: motion
     lambda: return id(cadence).has_state() && id(cadence).state > 0;
 
-  # Console buttons (common to GND). Button 1 resets the revolution counter;
-  # button 2 is exposed for your own automations (both are visible in HA).
+  # Encoder push: short click = next page, long press = reset ride
   - platform: gpio
-    name: "Console Button 1"
-    id: button_1
     pin:
-      number: ${pin_button_1}
-      mode:
-        input: true
-        pullup: true
+      number: ${pin_button}
+      mode: INPUT_PULLUP
       inverted: true
-    filters:
-      - delayed_on: 20ms
-      - delayed_off: 20ms
-    on_press:
-      - pulse_meter.set_total_pulses:
-          id: cadence
-          value: 0
-      - rtttl.play: "reset:d=16,o=6,b=200:c,e"
+    name: "${upper_devicename} Button"
+    on_multi_click:
+    - timing:
+      - ON for 1.1s to 3s
+      - OFF for at least 0.1s
+      then:
+        - logger.log: "long press - reset ride"
+        - button.press: reset_ride
+    - timing:
+      - ON for at most 1s
+      - OFF for at least 0.2s
+      then:
+        - display.page.show_next: oled
+        - component.update: oled
 
+  # "Back" -> drop to level 1 (coast), remembering where we were
   - platform: gpio
-    name: "Console Button 2"
-    id: button_2
     pin:
-      number: ${pin_button_2}
-      mode:
-        input: true
-        pullup: true
+      number: ${pin_back}
+      mode: INPUT_PULLUP
       inverted: true
-    filters:
-      - delayed_on: 20ms
-      - delayed_off: 20ms
+    name: "${upper_devicename} Back"
     on_press:
-      - rtttl.play: "click:d=32,o=6,b=240:e"
+      - lambda: |-
+          int cur = (int) id(resistance_level).state;
+          if (cur > 1) id(coast_return_level) = cur;
+      - number.set:
+          id: resistance_level
+          value: 1
 
-  # AD8232 lead-off detect: high = that electrode has lost skin contact
+  # "Confirm" -> restore the level we coasted from
   - platform: gpio
     pin:
-      number: ${pin_ecg_lo_plus}
-      mode:
-        input: true
-    id: lo_plus
-    internal: true
-  - platform: gpio
-    pin:
-      number: ${pin_ecg_lo_minus}
-      mode:
-        input: true
-    id: lo_minus
-    internal: true
-  - platform: template
-    name: "Hands On Grips"
-    id: hands_on
-    icon: mdi:hand-back-left
-    lambda: return id(ecg_enable).state && !id(lo_plus).state && !id(lo_minus).state;
-
-switch:
-  - platform: gpio
-    pin: ${pin_ecg_sdn}
-    name: "Grip ECG Amplifier"
-    id: ecg_enable
-    icon: mdi:heart-pulse
-    restore_mode: RESTORE_DEFAULT_ON
-    entity_category: config
+      number: ${pin_confirm}
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "${upper_devicename} Confirm"
+    on_press:
+      - if:
+          condition:
+            lambda: return id(coast_return_level) > 0;
+          then:
+            - number.set:
+                id: resistance_level
+                value: !lambda return id(coast_return_level);
 
 button:
+  - platform: template
+    name: "${upper_devicename} Reset Ride"
+    id: reset_ride
+    icon: mdi:restart
+    on_press:
+      - lambda: |-
+          id(ride_seconds) = 0;
+          id(session_start_revs) = id(crank_total).has_state() ? id(crank_total).state : 0;
+      - component.update: ride_time
+      - component.update: ride_distance
+      - display.page.show: page_ride
+      - component.update: oled
+
   # Calibration helpers: nudge the motor 250 ms on one bridge leg and stop.
   - platform: template
-    name: "Brake Jog IN1"
+    name: "${upper_devicename} Brake Jog IN1"
     icon: mdi:arrow-right-bold
     entity_category: config
     on_press:
@@ -392,7 +376,7 @@ button:
       - output.turn_off: brake_in1
 
   - platform: template
-    name: "Brake Jog IN2"
+    name: "${upper_devicename} Brake Jog IN2"
     icon: mdi:arrow-left-bold
     entity_category: config
     on_press:
@@ -405,7 +389,7 @@ button:
       - output.turn_off: brake_in2
 
   - platform: template
-    name: "Brake Stop"
+    name: "${upper_devicename} Brake Stop"
     icon: mdi:stop
     entity_category: config
     on_press:
@@ -415,14 +399,70 @@ button:
       - output.turn_off: brake_in1
       - output.turn_off: brake_in2
 
-  - platform: restart
-    name: "Restart"
-    entity_category: diagnostic
+display:
+  - platform: ssd1306_i2c
+    model: "SH1106 128x64"     # SH1116 works with the SH1106 driver; if the
+    address: 0x3C              # image is shifted 2 px try "SSD1306 128x64"
+    update_interval: 500ms
+    id: oled
+    pages:
+      # --- Page 1: ride -------------------------------------------------
+      - id: page_ride
+        lambda: |-
+          float rpm = id(cadence).has_state() ? id(cadence).state : 0;
+          uint32_t s = id(ride_seconds);
 
-# ---------------------------------------------------------------------------
-# Loops
-# ---------------------------------------------------------------------------
+          // Row 1: level (left) / rpm (right)
+          it.printf(0, 0, id(font3), TextAlign::TOP_LEFT, "LVL %d",
+                    (int) id(resistance_level).state);
+          it.printf(127, 0, id(font3), TextAlign::TOP_RIGHT, "%.0f rpm", rpm);
+
+          // Row 2: ride clock, big
+          it.printf(64, 16, id(font2), TextAlign::TOP_CENTER, "%02u:%02u", s / 60, s % 60);
+          if (id(moving)) it.print(127, 24, id(font1), TextAlign::TOP_RIGHT, "MOT");
+
+          // Row 3: distance (left) / heart rate (right) / clock (middle)
+          it.printf(0, 63, id(font1), TextAlign::BASELINE_LEFT, "%.2f KM",
+                    id(ride_distance).state);
+          if (id(homeassistant_time).now().is_valid())
+            it.strftime(64, 63, id(font1), TextAlign::BASELINE_CENTER, "%H:%M",
+                        id(homeassistant_time).now());
+          if (id(heart_rate).has_state() && !isnan(id(heart_rate).state))
+            it.printf(127, 63, id(font1), TextAlign::BASELINE_RIGHT, "%.0f BPM",
+                      id(heart_rate).state);
+          else
+            it.print(127, 63, id(font1), TextAlign::BASELINE_RIGHT, "-- BPM");
+
+      # --- Page 2: heart rate -------------------------------------------
+      - id: page_hr
+        lambda: |-
+          it.print(0, 0, id(font3), TextAlign::TOP_LEFT, "Heart rate");
+          if (id(heart_rate).has_state() && !isnan(id(heart_rate).state))
+            it.printf(64, 16, id(font2), TextAlign::TOP_CENTER, "%.0f",
+                      id(heart_rate).state);
+          else
+            it.print(64, 16, id(font2), TextAlign::TOP_CENTER, "--");
+          it.print(64, 63, id(font1), TextAlign::BASELINE_CENTER,
+                   id(hrm).connected() ? "STRAP CONNECTED" : "STRAP NOT FOUND");
+
+      # --- Page 3: brake diagnostics (calibration helper) ---------------
+      - id: page_brake
+        lambda: |-
+          it.print(0, 0, id(font3), TextAlign::TOP_LEFT, "Brake");
+          it.printf(0, 20, id(font3), TextAlign::TOP_LEFT, "pos  %.3f V", id(brake_pos));
+          it.printf(0, 36, id(font3), TextAlign::TOP_LEFT, "tgt  %.3f V", id(target_v));
+          it.printf(0, 63, id(font1), TextAlign::BASELINE_LEFT, "LVL %d  %s",
+                    (int) id(resistance_level).state, id(moving) ? "MOVING" : "IDLE");
+          if (id(motor_fault).state)
+            it.print(127, 63, id(font1), TextAlign::BASELINE_RIGHT, "FAULT");
+
 interval:
+  # Ride clock: count seconds while pedaling.
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (id(cadence).has_state() && id(cadence).state > 0) id(ride_seconds)++;
+
   # Brake position loop, 20 Hz.
   - interval: 50ms
     then:
@@ -445,7 +485,6 @@ interval:
             id(moving) = false;
             id(last_dir) = 0;
             id(motor_fault).publish_state(true);
-            id(buzzer).play("fault:d=8,o=5,b=180:c,p,c,p,c");
             ESP_LOGE("brake", "Stall timeout: pos %.3f V, target %.3f V", pos, id(target_v));
             return;
           }
@@ -475,30 +514,3 @@ interval:
           bool use_in1 = (dir > 0) == in1_raises;
           if (use_in1) id(brake_in1).turn_on(); else id(brake_in2).turn_on();
           id(last_dir) = dir;
-
-  # Grip ECG sampling, ~250 Hz. Simple baseline-tracking R-peak detector.
-  - interval: 4ms
-    then:
-      - lambda: |-
-          static float baseline = 1.65f;
-          static uint32_t last_beat = 0;
-          static float ibi[4] = {0, 0, 0, 0};
-          static uint8_t n = 0;
-
-          if (!id(hands_on).state) { n = 0; last_beat = 0; return; }
-          float x = id(ecg_adc).sample();
-          if (isnan(x)) return;
-
-          baseline += 0.01f * (x - baseline);      // slow high-pass
-          float v = x - baseline;
-          uint32_t now = millis();
-
-          if (v > ${ecg_threshold_v} && now - last_beat > 300) {   // 300 ms refractory
-            if (last_beat != 0) { ibi[n % 4] = now - last_beat; n++; }
-            last_beat = now;
-            if (n >= 4) {
-              float avg = (ibi[0] + ibi[1] + ibi[2] + ibi[3]) / 4.0f;
-              float bpm = 60000.0f / avg;
-              if (bpm > 30 && bpm < 220) { id(grip_hr_val) = bpm; id(grip_hr_at) = now; }
-            }
-          }

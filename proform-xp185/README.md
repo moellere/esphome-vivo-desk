@@ -1,165 +1,70 @@
 # ProForm XP 185 U under-desk bike (ESPHome)
 
-Replaces the battery-powered console of a ProForm XP 185 U (Sears 831.21741.0 /
-ICON PFCCEX01210) with an ESP32 running ESPHome. The bike has no lower control
-board and no serial bus: the console *is* the controller. It drives a 6 V
-gearmotor that moves the magnetic brake, reads that motor's feedback
-potentiometer, counts a crank reed switch, and amplifies the handlebar pulse
-pads. All of that is trivial from an ESP32, so the config in `desk-bike.yaml`
-does the same job and exposes it to Home Assistant.
+Turns a ProForm XP 185 U (Sears 831.21741.0 / ICON PFCCEX01210) into an
+under-desk bike controlled by an ESP32 running ESPHome, with a small
+OLED + rotary encoder module as the local UI and everything exposed to Home
+Assistant.
 
-> ⚠️ Not affiliated with ICON / ProForm. You are cutting into your own
-> hardware; check everything with a meter before applying power.
+**The original console and handlebars are left intact.** The only thing the
+build touches is the 8-pin harness coming up from the base: unplug it from the
+console, plug it into the new controller. Put the harness back and the bike is
+stock again.
 
-## Hardware
+The bike has no lower control board and no serial bus: the console *is* the
+controller. It drives a 6 V gearmotor that moves the magnetic brake, reads that
+motor's feedback potentiometer, counts a crank reed switch, and amplifies the
+grip pulse pads. `desk-bike.yaml` reproduces the first three from an ESP32 and
+takes heart rate from a BLE chest strap instead of the grips.
+
+> ⚠️ Not affiliated with ICON / ProForm. Check everything with a meter before
+> applying power; you are responsible for your own hardware.
+
+## Bill of materials
 
 | Part | Notes |
 |---|---|
-| ESP32 dev board (`esp32dev`) | Classic ESP32 or S3. BLE + Wi‑Fi at the same time is tight on a C3, so prefer these. |
-| H-bridge | Either the console's own bridge with its two inputs cut free from the blob MCU, or a DRV8833 / TB6612 module. Avoid the L298N (drops ~2 V, leaves the motor with 3 V). |
-| 5 V supply | USB‑C receptacle with **5.1 kΩ from CC1 and CC2 to GND** (needed for C‑to‑C cables and PD chargers), 2 A or better. 470 µF + 100 nF at the bridge's motor rail. |
-| AD8232 breakout (optional) | ECG front end for the grip electrodes. |
-| BLE heart rate strap (optional, recommended) | Anything exposing the standard Heart Rate Service. |
+| ESP32 dev board (`esp32dev`) | Classic ESP32 or S3. An ESP32‑C3 Super Mini works with the alternate pin map in the YAML but is tight on pins and RAM with BLE + Wi‑Fi. |
+| 1.3" OLED + EC11 encoder module (Estardyn, SH1116 driver, I2C) | The same module as the scroller project: SDA, SCL, VCC, GND, encoder A/B, PSH, CON (KEY1), BAK (KEY0). |
+| H‑bridge | **Recommended:** two MOSFET half‑bridges from IRF4905 + IRFZ44N + 2N3904 (below). Alternatives: a DRV8833/TB6612 module, or a dual 5 V relay board. |
+| 5 V supply | USB‑C receptacle with **5.1 kΩ from CC1 and CC2 to GND**, 2 A or better. 470 µF + 100 nF at the bridge's motor rail, 100 nF across the motor. |
+| Mating connector for the harness | Whatever the console used (an 8‑pin JST‑XH‑style header on the console PCB), or splice a pigtail. |
+| BLE heart‑rate strap (optional) | Anything exposing the standard Heart Rate Service. |
+| Resistors | 2 × 10 kΩ (GPIO pull‑downs on the bridge inputs), 2 × 470 Ω, 2 × 1 kΩ, 2 × 5.1 kΩ (USB‑C CC). |
 
-### Lower harness (8 wires)
+## Circuit
 
-Identify with the console unplugged:
+### 8‑pin harness from the base (measured on this bike)
 
-| Function | Wires | How to find it |
+| Pin | Function | Goes to |
 |---|---|---|
-| Brake motor | 2 | A few ohms between them. This is the H‑bridge *output*; polarity reversal moves the magnets in or out. |
-| Feedback pot | 3 | Two ends read a fixed few kΩ; wiper varies as the motor turns. |
-| Crank reed switch | 2 | Open, closes to ~0 Ω as the crank magnet passes. |
-| Spare | 1 | Frame ground / shield, an end‑stop switch, or unused. |
-
-Measured on one XP 185 U (pin numbers as counted on the console‑side 8‑pin
-footprint; verify yours):
-
-| Pin | Function | Console PCB side |
-|---|---|---|
-| 1 | Motor A | Output node of one half‑bridge (2N4403 PNP high side + 2N4401 NPN low side) |
-| 2 | Motor B | Output node of the other half‑bridge (2N4403 PNP + 2N4401 NPN) |
-| 3 | Pot supply | Feed from **3V3** in the new build |
-| 4 | Pot wiper | → ADC (`pin_pot_wiper`) |
+| 1 | Motor A | bridge output A |
+| 2 | Motor B | bridge output B |
+| 3 | Pot supply | **3V3** (not 5 V, so the wiper stays inside the ADC range) |
+| 4 | Pot wiper | `pin_pot` (GPIO34) |
 | 5 | Pot ground | GND |
-| 6 | Chassis ground | GND (common with 5 and 8 on the PCB; single‑point ground at the ESP/bridge) |
-| 7 | Reed switch | → `pin_reed` (pull‑up enabled) |
+| 6 | Chassis ground | GND (common with 5 and 8 on the console PCB) |
+| 7 | Reed switch | `pin_reed` (GPIO27); internal pull‑up enabled |
 | 8 | Reed switch return | GND |
 
 Pins 1/2 reverse polarity across the motor to move the magnets toward or away
-from the flywheel. The 2N4401/2N4403 are rated 600 mA each with one device
-per side, so the motor's stall current is below that. A saturated PNP + NPN
-pair drops about 1 V, so on a 5 V supply the motor sees ~4 V through the
-console bridge; a MOSFET module (DRV8833) gives it the full 5 V.
+from the flywheel. The console's own bridge used one 2N4401 + 2N4403 per
+side, so the motor's stall current is under 600 mA.
 
-### ESP32 connections (defaults in the `substitutions:` block)
+### ESP32 pin map (defaults in the YAML `substitutions:`)
 
 | Signal | ESP pin | Notes |
 |---|---|---|
 | Bridge IN1 | GPIO18 | 10 kΩ pull‑down to GND so the motor can't run during boot |
 | Bridge IN2 | GPIO19 | 10 kΩ pull‑down to GND |
-| Pot wiper | GPIO34 | Pot ends to **3V3** and GND (not 5 V) so the wiper stays in ADC range |
-| Reed switch | GPIO27 | Other side to GND; internal pull‑up is enabled |
-| AD8232 OUTPUT | GPIO35 | |
-| AD8232 LO+ / LO‑ | GPIO32 / GPIO33 | Lead‑off detect |
-| AD8232 SDN | GPIO25 | Exposed as the "Grip ECG Amplifier" switch |
-| AD8232 3.3V / GND | 3V3 / GND | |
-| Resistance dial A / B | GPIO16 / GPIO17 | Encoder common to GND; internal pull‑ups |
-| Console button 1 / 2 | GPIO21 / GPIO22 | Button common to GND; internal pull‑ups |
-| Buzzer | GPIO23 | See *Console controls* |
+| Pot wiper | GPIO34 | ADC1, input‑only pin |
+| Reed switch | GPIO27 | other side to GND |
+| OLED SDA / SCL | GPIO21 / GPIO22 | 3V3 and GND to the module |
+| Encoder A / B | GPIO16 / GPIO17 | internal pull‑ups |
+| Encoder push (PSH) | GPIO25 | internal pull‑up |
+| Back (BAK / KEY0) | GPIO26 | internal pull‑up |
+| Confirm (CON / KEY1) | GPIO33 | internal pull‑up |
 
-### Grip electrodes → AD8232
-
-Each grip has two wires. Meter them: if the two wires of one grip are **open**
-to each other, each grip has two isolated pads; if they're **shorted**, the grip
-is a single electrode with doubled wiring.
-
-| Layout | LA | RA | RL |
-|---|---|---|---|
-| Isolated pads | one pad of the left grip | one pad of the right grip | the remaining left pad **and** right pad, joined |
-| Paralleled pads | left grip | right grip | leave unconnected |
-
-On the XP 185 U the grips use the isolated layout. Each grip's two wires land
-on a 4‑pin footprint on the console PCB, and the two **centre pins (the black
-wire from each grip) are tied together** there: that pair is the console's
-shared reference electrode. So: left non‑black → LA, right non‑black → RA,
-both blacks → RL. If you keep the console PCB for its H‑bridge, desolder the
-grip wires from that footprint (or cut its outgoing traces) so the old
-amplifier no longer loads the electrodes.
-
-Do **not** tie any electrode to ESP ground. RL is the driven‑right‑leg output;
-the chip actively drives it to mid‑supply to cancel common‑mode noise, and
-grounding an electrode defeats that.
-
-Keep the four grip wires twisted, short, and away from the motor leads.
-
-### Console controls
-
-The console's resistance dial is a 3‑wire quadrature encoder (A, B, common),
-the two buttons share a common, and the buzzer is a two‑terminal piezo. All
-three carry over:
-
-- **Dial**: each detent steps **Resistance Level** by one. If one detent
-  moves it by two or four, raise `encoder_resolution` to `2` or `4`.
-- **Button 1** resets the crank revolution counter and beeps. **Button 2**
-  only beeps; both are exposed to Home Assistant as binary sensors for your
-  own automations.
-- **Buzzer**: short chirp on a level change, two‑tone on reset, three slow
-  beeps on a brake motor fault. A piezo *disc* can hang straight off the GPIO
-  (add a 100 Ω to 1 kΩ series resistor if you like). If the part is a
-  *magnetic* buzzer instead (a coil that meters at a few tens of ohms), drive
-  it through an NPN transistor with a flyback diode; it will draw more than a
-  GPIO can source.
-
-## Reusing the console's H‑bridge
-
-Follow the two motor wires back into the console PCB.
-
-- **Driver IC** (BA6208, BA6218, LB1638, TA7291 or similar): cut the two traces
-  from the blob MCU to its inputs and wire the ESP GPIOs in. Check the
-  datasheet's truth table; some parts treat both‑high as *brake*, some as
-  *forbidden*.
-- **Discrete transistors** (the XP 185 U: a 2N4403 PNP high side and a 2N4401
-  NPN low side per motor pin, each driven by an MMBT4401 SOT‑23 pre‑driver
-  marked `2X`, through a 220 Ω base resistor, with a 2.2 kΩ resistor from
-  the blob into each pre‑driver's base). **Intercept at the 2.2 kΩ
-  resistors, not at the output transistor bases**: they are logic‑level
-  inputs and a 3.3 V GPIO drives an MMBT4401 base fine. Remove each 2.2 kΩ
-  0805, solder a through‑hole 2.2 kΩ from the GPIO wire to the pad on the
-  pre‑driver side, leave the blob‑side pad empty, and add 10 kΩ from each
-  GPIO to GND. Before cutting, meter: which pre‑driver feeds which output
-  transistor, whether each pre‑driver is common‑emitter (emitter to GND)
-  or an emitter follower (collector to 5 V), and whether the four blob‑side
-  nets are paired (PNP‑A with NPN‑B, PNP‑B with NPN‑A → two GPIOs, config
-  as written) or all separate (four GPIOs; ask for the config change).
-  Never drive the 2N4401/2N4403 bases straight from a GPIO: on a 5 V rail
-  a 3.3 V level turns both halves of a leg on at once. At 3.3 V input the
-  low side gets roughly half the base current it had from the blob, so set
-  `stall_timeout_ms` to `4000`.
-
-If the bridge turns out to be discrete, weigh the time against a DRV8833 module.
-
-## Using two relays as the bridge
-
-Two SPDT relays (a common dual 5 V relay board) make a bridge with no
-shoot‑through state at all, and the motor gets the full 5 V through the
-contacts:
-
-| Relay board | Connects to |
-|---|---|
-| Relay 1 COM / NO / NC | motor pin 1 / +5 V / GND |
-| Relay 2 COM / NO / NC | motor pin 2 / +5 V / GND |
-| VCC (and JD‑VCC if jumpered), GND | +5 V, common GND |
-| IN1 / IN2 | `pin_bridge_in1` / `pin_bridge_in2` |
-
-Same truth table as the transistor bridges: both off = both pins grounded,
-one on = one direction, both on = both pins at 5 V. Most relay boards are
-**active‑low** (the relay pulls in when IN is grounded): set
-`bridge_active_low: "true"`. If a relay clicks in during boot, add 10 kΩ from
-that IN pin to 5 V. Keep the board away from the AD8232 wiring; the coils
-are noisy when they switch.
-
-## Recommended: MOSFET bridge (IRF4905 + IRFZ44N)
+### Recommended bridge: two MOSFET half‑bridges
 
 Three parts per half‑bridge, no heat, nearly the full 5 V at the motor, and
 the FET body diodes handle flyback. Build two, one per motor pin.
@@ -167,7 +72,7 @@ the FET body diodes handle flyback. Build two, one per motor pin.
 | Part | Pin | Connects to |
 |---|---|---|
 | IRF4905 (P‑MOSFET) | source | +5 V rail |
-| IRF4905 | drain | MOTOR pin |
+| IRF4905 | drain | MOTOR pin (harness 1 or 2) |
 | IRF4905 | gate | node D |
 | IRFZ44N (N‑MOSFET) | source | GND |
 | IRFZ44N | drain | MOTOR pin |
@@ -175,62 +80,16 @@ the FET body diodes handle flyback. Build two, one per motor pin.
 | R1 470 Ω | | node D to +5 V |
 | Q1 2N3904 (or 2N2222 / BC337) | collector | node D |
 | Q1 | emitter | GND |
-| Q1 | base | R2 1 kΩ to ESP GPIO |
+| Q1 | base | R2 1 kΩ to ESP GPIO (IN1 or IN2) |
 | R3 10 kΩ | | ESP GPIO to GND |
 
 GPIO **high** → Q1 on → node D ≈ 0 V → P‑FET on, N‑FET off → motor pin at
 5 V. GPIO **low** → Q1 off → node D pulled to 5 V → P‑FET off, N‑FET on →
 motor pin at GND. A floating GPIO at boot reads low through R3, so both pins
-start grounded. The shared gate node is fine here because gates draw no
-steady current; both FETs are only partially on for a few microseconds
-during each transition, which happens only on level changes.
-
-TO‑220 pinout (flat face toward you, legs down, left→right): **G‑D‑S**; tab
-is drain. 2N3904 (flat face toward you): **E‑B‑C**. IRF9540 substitutes for
-the IRF4905. Do not use the 600 V FQPF parts on the low side; their 3–5 V
-threshold is too high for a 5 V gate. Same truth table and config as the
-relay and BJT bridges; `stall_timeout_ms` can stay at 8000.
-
-## Alternative: bridge from 2N4401 / 2N4403 (BJT only)
-
-If the console bridge is awkward to reuse, this discrete design takes the
-ESP32's 3.3 V GPIOs directly, drives the motor from the 5 V rail, and has no
-static state that passes current through a leg. Build two identical
-half‑bridges, one for `pin_bridge_in1` and one for `pin_bridge_in2`.
-
-```
-                          +5V (motor rail)
-                 ┌──────────┬──────────────┬────────┐
-                 │          │              │        │
-               R4 4.7k    R6 220Ω        Q1 E      D1 ▲ 1N5819
-                 │          │          2N4403       │  (cathode to +5V)
-                 │          │            B ─ R1 220Ω ─┐
-                 │          │              C ────────┼──┬──────► MOTOR pin (harness 1 or 2)
-                 │          │                        │  │
-                 │          │                        │  D2 ▲ 1N5819 (anode to GND)
-                 │          │              C ────────┘  │
-                 │          │          2N4401           │
-                 │          │            B ─ R2 220Ω ─┐ │
-                 │          │             Q2 E ───────┼─┼──── GND
-                 │          │                         │ │
-      GPIO ──┬── R3 1k ── B  Q3 2N4401  C ────────────┘ │   (Q3 collector = node D: to R1 and R4)
-             │            E ── GND                      │
-             ├── R7 1k ── B  Q4 2N4401  C ──────────────┘   (Q4 collector = node E: to R2 and R6)
-             │            E ── GND
-            R8 10k
-             │
-            GND
-```
-
-- GPIO **high**: Q3 on → Q1 base pulled low through R1 (~19 mA) → motor pin
-  ≈ 4.7 V. Q4 on → node E ≈ 0.1 V → Q2 off.
-- GPIO **low**: Q3 off → R4 holds Q1's base at a stiff 5 V → Q1 off. Q4 off →
-  Q2 gets ~10 mA through R6 + R2 → motor pin ≈ 0.3 V.
-- R8 keeps the GPIO low while the ESP is in reset or being flashed.
-
-The two pre‑drivers are separate on purpose: if the NPN's base current ran
-through the pull‑up that holds the PNP's base at 5 V, that node would sag to
-~3 V and the PNP would conduct too.
+start grounded. TO‑220 pinout, flat face toward you, legs down, left→right:
+**G‑D‑S**, tab = drain. 2N3904 flat face toward you: **E‑B‑C**. IRF9540
+substitutes for the IRF4905. Do not use the 600 V FQPF parts on the low
+side; their 3–5 V threshold is too high for a 5 V gate.
 
 | IN1 | IN2 | Pin 1 | Pin 2 | Motor |
 |---|---|---|---|---|
@@ -239,49 +98,81 @@ through the pull‑up that holds the PNP's base at 5 V, that node would sag to
 | low | high | GND | +5 V | direction B |
 | high | high | +5 V | +5 V | off |
 
-Per half‑bridge: Q1 2N4403; Q2, Q3, Q4 2N4401; R1, R2 220 Ω; R4 4.7 kΩ;
-R6 220 Ω ¼ W; R3, R7 1 kΩ; R8 10 kΩ; D1, D2 1N5819. Once per bridge: 470 µF
-+ 100 nF across the 5 V rail at the bridge and 100 nF across the motor.
+No combination passes current through a leg. The YAML still passes through
+all‑off for one 50 ms tick before reversing.
 
-Each GPIO sources ~5 mA. At ~300 mA motor current both output transistors
-saturate and the motor sees ~4.2 V. At a 600 mA stall the low side runs out
-of base drive and dissipates ~0.5 W in a TO‑92, so set `stall_timeout_ms`
-to `4000` with this bridge. A TIP120 or a logic‑level N‑MOSFET drops into
-Q2's place with the same drive if you have one.
+### Alternative: dual relay board
 
-Bring‑up: build one half with no motor. Input tied to 3.3 V → output ≈ 4.7 V;
-input to GND → output ≈ 0.1 V. With a 100 Ω load to GND during the high test
-the rail should draw ~50 mA (Q1 saturated). Then build the second half, add
-the motor, and use the jog buttons with the supply current‑limited to 1 A.
+Two SPDT relays: relay 1 COM → motor pin 1, relay 2 COM → motor pin 2, both
+NO → +5 V, both NC → GND, VCC/JD‑VCC → 5 V, IN1/IN2 → the bridge GPIOs. Most
+boards are active‑low: set `bridge_active_low: "true"`. If a relay clicks in
+during boot, add 10 kΩ from that IN pin to 5 V.
+
+### Power and grounding
+
+One 5 V supply feeds everything. The ESP takes its 3.3 V from its own
+regulator; the pot is fed from that 3.3 V. Make a single star ground at the
+bridge/ESP; the harness grounds (5, 6, 8) and the chassis all land there.
+Bring the motor rail in through the 470 µF + 100 nF pair at the bridge.
+
+### Layout (perfboard)
+
+Left to right, matching signal flow:
+
+1. **USB‑C receptacle** with the two 5.1 kΩ CC resistors, feeding a 5 V rail
+   along the top edge and GND along the bottom.
+2. **Bridge** next to the harness connector: the two TO‑220 pairs side by
+   side, their 2N3904 drivers and 470 Ω / 1 kΩ / 10 kΩ in front of them, the
+   470 µF across the rails right there.
+3. **Harness header** (8‑pin) on the edge: 1/2 to the bridge outputs, 3 to
+   3V3, 4 to GPIO34, 5/6/8 to GND, 7 to GPIO27.
+4. **ESP32** in the middle, GPIO side facing the bridge.
+5. **OLED/encoder module** on a 4‑pin + 5‑pin header (or a short ribbon) so it
+   can mount on the desk edge; keep the I2C leads under ~30 cm.
+
+## The local UI
+
+| Control | Action |
+|---|---|
+| Encoder turn | resistance level 1–8 (also `number.desk_bike_resistance_level` in HA) |
+| Encoder push, short | next display page |
+| Encoder push, hold 1–3 s | reset ride time and distance |
+| Back | drop to level 1 (coast) and remember the previous level |
+| Confirm | return to the remembered level |
+
+Pages: **Ride** (level, rpm, ride clock, distance, time of day, heart rate),
+**Heart rate** (large, plus strap status), **Brake** (pot voltage, target,
+moving/idle, fault — the calibration page).
 
 ## Calibration
 
-1. Flash with the defaults, power up, and open the device in Home Assistant.
+1. Flash with the defaults, power up, and open the device in Home Assistant
+   (or turn the encoder push to the **Brake** page).
 2. Press **Brake Jog IN1** a few times and watch **Brake Position** (volts).
    If the voltage *rises*, leave `in1_raises_pot: "true"`; if it falls, set
    `"false"`.
-3. Jog to the lightest resistance you want as level 1 (magnets furthest from the
-   flywheel) and note the voltage → `pot_v_level1`.
+3. Jog to the lightest resistance you want as level 1 (magnets furthest from
+   the flywheel) and note the voltage → `pot_v_level1`.
 4. Jog the other way to the heaviest usable position and note it →
    `pot_v_level8`. Stop short of the mechanical end stops by a few hundredths
    of a volt so the loop never drives into them.
 5. Re‑flash. **Resistance Level** now maps 1–8 linearly between those two
    voltages, and the loop stops within `deadband_v` of the target.
 
-If **Brake Motor Fault** turns on, the motor ran for `stall_timeout_ms` without
-reaching the target: wrong `in1_raises_pot`, a target outside the pot's range,
-or a jam. Fix the cause and change the level again to clear it.
+If **Brake Motor Fault** turns on, the motor ran for `stall_timeout_ms`
+without reaching the target: wrong `in1_raises_pot`, a target outside the
+pot's range, or a jam. Fix the cause and change the level again to clear it.
+
+`meters_per_rev` sets the virtual distance per crank revolution (4.6 m ≈ a
+road bike at 90 rpm / 25 km/h). Tune to taste.
 
 ## Heart rate
 
-- **Strap**: set `hrm_mac`. On boot with the strap on, the ESPHome log lists
-  nearby BLE devices with their MACs. **Heart Rate** prefers the strap whenever
-  it has reported in the last 15 s.
-- **Grip pads**: hold both grips; **Hands On Grips** turns on when both
-  lead‑off lines are clear, and **Grip Heart Rate** appears after four
-  consecutive beats. Tune `ecg_threshold_v` by logging the raw ADC for a minute
-  and setting it to about half the R‑peak height above the baseline. Readings
-  are ignored while a hand is off.
+Set `hrm_mac`. On boot with the strap on, the ESPHome log lists nearby BLE
+devices with their MACs. The **Heart rate** page shows whether the strap is
+connected. (The grip electrodes on the handlebars are not used; they need
+both hands on the bars, which doesn't fit desk use. An AD8232 version lives
+in this repo's history if you ever want it.)
 
 ## Entities
 
@@ -289,18 +180,21 @@ or a jam. Fix the cause and change the level again to clear it.
 |---|---|---|
 | Resistance Level | number 1–8 | Sets the brake |
 | Cadence, Crank Revolutions | sensor | From the reed switch |
+| Ride Time, Ride Distance | sensor | Session counters; Reset Ride button clears them |
 | Pedaling | binary | Cadence > 0 |
-| Heart Rate / Strap Heart Rate / Grip Heart Rate | sensor | Combined and per‑source |
-| Hands On Grips | binary | Both electrodes in contact |
+| Heart Rate | sensor | From the BLE strap |
+| Button, Back, Confirm | binary | The module's keys, for your own automations |
 | Brake Position, Brake Moving, Brake Motor Fault | diagnostics | Loop state |
 | Brake Jog IN1 / IN2 / Stop | buttons | Calibration and manual override |
-| Console Button 1 / 2 | binary | Physical buttons on the console |
-| Grip ECG Amplifier | switch | AD8232 SDN |
 
-## Secrets
+## Config layout
 
-`desk-bike.yaml` expects these in `secrets.yaml`: `wifi_ssid`, `wifi_password`,
-`bike_api_key`, `ota_password`, `fallback_ap_password`.
+`desk-bike.yaml` follows the same shape as the scroller project: `common/
+base.yaml` and `common/sensor.yaml` are merged in, fonts come from
+`common/fonts/` (slkscr, BebasNeue‑Regular, arial). Remember that a
+top‑level key in the main file *replaces* the same key from an include, so
+wifi/api/ota/logger are left to `base.yaml`, and this file's `sensor:` block
+replaces whatever `sensor.yaml` provides.
 
 ## Not included (yet)
 
