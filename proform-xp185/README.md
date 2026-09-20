@@ -168,7 +168,7 @@ tracking).
 | Confirm | return to the remembered level |
 
 Pages: **Ride** (level, rpm, ride clock, distance, time of day, heart rate),
-**Heart rate** (large, plus strap status), **Brake** (pot voltage, target,
+**Goals** (odometer, next milestone, progress bar), **Heart rate** (large, plus strap status), **Brake** (pot voltage, target,
 moving/idle, fault — the calibration page).
 
 ## Calibration
@@ -190,8 +190,34 @@ If **Brake Motor Fault** turns on, the motor ran for `stall_timeout_ms`
 without reaching the target: wrong `in1_raises_pot`, a target outside the
 pot's range, or a jam. Fix the cause and change the level again to clear it.
 
-`meters_per_rev` sets the virtual distance per crank revolution (4.6 m ≈ a
-road bike at 90 rpm / 25 km/h). Tune to taste.
+## Distance, odometer and milestones
+
+Distance is what a bike with a **27.5 in tire** would cover: 2.194 m per wheel
+turn. A tire size alone doesn't give distance per pedal stroke, so there is
+also a virtual `gear_ratio` (wheel turns per crank turn). The default 2.1 is
+about a 34T x 16T gear: 4.61 m per stroke, 12 mph at 70 rpm. Change either
+substitution to taste; `use_miles` switches the OLED and milestone text.
+
+- **Ride Distance / Ride Time / Speed** are per session (hold the encoder to
+  reset).
+- **Odometer** is lifetime distance. The crank count behind it is stored in
+  flash (written at most every 5 minutes) so it survives reboots and OTA
+  updates. It is `total_increasing` with `device_class: distance`, which is
+  what Home Assistant's utility meter needs.
+  `homeassistant-desk-bike.yaml` is a ready package with daily, weekly,
+  monthly and yearly meters.
+- **Milestones** unlock on lifetime distance: Length of Manhattan, English
+  Channel, Pontchartrain Causeway, a marathon, Panama Canal, Hadrian's Wall
+  (117.5 km), a century ride, Katy Trail, Grand Canyon, Across Arkansas
+  (I-40, 458 km), Natchez Trace, Pacific Coast Highway, Land's End to John
+  o'Groats, a Tour de France, Appalachian Trail, Route 66, New York to LA,
+  the Ming Great Wall, and around the Earth. The list is one table in the
+  YAML; keep it sorted if you add your own.
+  Each unlock publishes **Last Milestone**, shows a 15 s banner on the OLED,
+  and fires the HA event `esphome.desk_bike_milestone` (`title`,
+  `odometer_km`) for automations. **Next Milestone** and **Milestone
+  Progress** show what's coming; the OLED's *Goals* page has the same with a
+  progress bar.
 
 ## Heart rate
 
@@ -207,7 +233,9 @@ in this repo's history if you ever want it.)
 |---|---|---|
 | Resistance Level | number 1–8 | Sets the brake |
 | Cadence, Crank Revolutions | sensor | From the reed switch |
-| Ride Time, Ride Distance | sensor | Session counters; Reset Ride button clears them |
+| Ride Time, Ride Distance, Speed | sensor | Session counters; Reset Ride button clears them |
+| Odometer | sensor | Lifetime distance, kept in flash; source for HA utility meters |
+| Last Milestone, Next Milestone, Milestone Progress | text / sensor | Distance achievements |
 | Pedaling | binary | Cadence > 0 |
 | Heart Rate | sensor | From the BLE strap |
 | Button, Back, Confirm | binary | The module's keys, for your own automations |

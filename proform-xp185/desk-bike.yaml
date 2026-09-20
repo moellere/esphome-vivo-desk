@@ -7,10 +7,12 @@
 #     half-bridges, a DRV8833/TB6612 module, or a dual relay board) to one of
 #     8 resistance levels, closed loop on the motor's feedback potentiometer
 #   - reads cadence from the crank reed switch; tracks ride time and distance
+#     on a virtual 27.5" wheel, plus a lifetime odometer kept in flash that
+#     unlocks distance milestones (Hadrian's Wall, across Arkansas, ...)
 #   - heart rate from a BLE chest strap
 #   - a 1.3" OLED + EC11 encoder module (SH1116/EC11, I2C) is the local UI:
 #       turn      = resistance level
-#       push      = next page;  hold 1-2 s = reset ride
+#       push      = next page (ride / goals / heart rate / brake);  hold = reset ride
 #       Back      = drop to level 1 (coast);  Confirm = restore previous level
 #
 # Drop this file into your ESPHome config dir next to common/ (base.yaml,
@@ -53,7 +55,10 @@ substitutions:
 
   # --- ride tracking ---------------------------------------------------------
   encoder_resolution: "1"     # 1, 2 or 4: raise it if one detent moves more than one level
-  meters_per_rev: "4.6"       # virtual distance per crank revolution (tune to taste)
+  wheel_diameter_in: "27.5"   # virtual tire: 27.5 in -> 2.194 m per wheel turn
+  gear_ratio: "2.1"           # wheel turns per crank turn (about 34T x 16T);
+                              # 2.1 -> 4.61 m per pedal stroke, 12 mph at 70 rpm
+  use_miles: "true"           # OLED and milestone text; HA converts the sensors itself
 
   # --- heart rate ------------------------------------------------------------
   hrm_mac: "00:00:00:00:00:00"  # BLE strap MAC; ESPHome logs nearby devices at boot
@@ -105,7 +110,48 @@ font:
     id: font3
     size: 14
 
+# The odometer lives in flash; batch the writes while riding.
+preferences:
+  flash_write_interval: 5min
+
 globals:
+  # --- distance -------------------------------------------------------------
+  - id: m_per_rev            # metres travelled per crank revolution
+    type: float
+    restore_value: no
+    initial_value: '${wheel_diameter_in} * 0.0254f * 3.14159265f * ${gear_ratio}'
+  - id: odometer_revs        # lifetime crank revolutions (exact; survives reboot)
+    type: uint32_t
+    restore_value: yes
+    initial_value: '0'
+  - id: last_crank_total     # pulse_meter total at the previous update
+    type: float
+    restore_value: no
+    initial_value: '0'
+  - id: milestones_done      # how many milestones have been announced
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: ms_next_name
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: ms_next_km
+    type: float
+    restore_value: no
+    initial_value: '0'
+  - id: ms_prev_km
+    type: float
+    restore_value: no
+    initial_value: '0'
+  - id: ms_last_name
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: celebrate_until      # millis() until which the OLED shows the banner
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
   # --- brake loop state ---
   - id: brake_pos            # filtered wiper voltage
     type: float
@@ -221,6 +267,49 @@ sensor:
       accuracy_decimals: 0
       icon: mdi:counter
       state_class: total_increasing
+      on_value:
+        - lambda: |-
+            float delta = x - id(last_crank_total);
+            id(last_crank_total) = x;
+            if (delta > 0 && delta < 1000) id(odometer_revs) += (uint32_t) delta;
+
+  - platform: template
+    name: "${upper_devicename} Speed"
+    id: speed
+    unit_of_measurement: km/h
+    device_class: speed
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 2s
+    lambda: |-
+      float rpm = id(cadence).has_state() ? id(cadence).state : 0;
+      return rpm * id(m_per_rev) * 60.0f / 1000.0f;
+
+  # Lifetime distance. total_increasing + device_class distance is what HA's
+  # utility_meter needs for per-day / week / month / year totals.
+  - platform: template
+    name: "${upper_devicename} Odometer"
+    id: odometer
+    unit_of_measurement: km
+    device_class: distance
+    state_class: total_increasing
+    accuracy_decimals: 2
+    icon: mdi:counter
+    update_interval: 10s
+    lambda: return id(odometer_revs) * id(m_per_rev) / 1000.0f;
+
+  - platform: template
+    name: "${upper_devicename} Milestone Progress"
+    id: milestone_progress
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    icon: mdi:flag-checkered
+    update_interval: 30s
+    lambda: |-
+      float km = id(odometer_revs) * id(m_per_rev) / 1000.0f;
+      float span = id(ms_next_km) - id(ms_prev_km);
+      if (span <= 0) return 100.0f;
+      return 100.0f * (km - id(ms_prev_km)) / span;
 
   - platform: template
     name: "${upper_devicename} Ride Time"
@@ -235,6 +324,7 @@ sensor:
     name: "${upper_devicename} Ride Distance"
     id: ride_distance
     unit_of_measurement: km
+    device_class: distance
     accuracy_decimals: 2
     icon: mdi:map-marker-distance
     update_interval: 5s
@@ -242,7 +332,7 @@ sensor:
       if (!id(crank_total).has_state()) return 0.0f;
       float revs = id(crank_total).state - id(session_start_revs);
       if (revs < 0) revs = 0;
-      return revs * ${meters_per_rev} / 1000.0f;
+      return revs * id(m_per_rev) / 1000.0f;
 
   # BLE chest strap (standard Heart Rate Service)
   - platform: ble_client
@@ -262,6 +352,32 @@ sensor:
       uint16_t hr = x[1];
       if ((x[0] & 1) && x.size() >= 3) hr |= (x[2] << 8);   // flag bit 0: 16-bit value
       return hr > 0 ? (float) hr : NAN;
+
+text_sensor:
+  - platform: template
+    name: "${upper_devicename} Last Milestone"
+    id: last_milestone
+    icon: mdi:trophy
+    update_interval: never
+  - platform: template
+    name: "${upper_devicename} Next Milestone"
+    id: next_milestone
+    icon: mdi:flag-checkered
+    update_interval: never
+
+script:
+  # Fired once per milestone: HA event for automations (TTS, lights, ...) and
+  # a 15 s banner on the OLED.
+  - id: announce_milestone
+    then:
+      - homeassistant.event:
+          event: esphome.desk_bike_milestone
+          data:
+            title: !lambda 'return id(ms_last_name);'
+            odometer_km: !lambda 'return to_string(id(odometer_revs) * id(m_per_rev) / 1000.0f);'
+      - lambda: id(celebrate_until) = millis() + 15000;
+      - display.page.show: page_goals
+      - component.update: oled
 
 number:
   - platform: template
@@ -432,8 +548,9 @@ display:
           if (id(moving)) it.print(127, 24, id(font1), TextAlign::TOP_RIGHT, "MOT");
 
           // Row 3: distance (left) / heart rate (right) / clock (middle)
-          it.printf(0, 63, id(font1), TextAlign::BASELINE_LEFT, "%.2f KM",
-                    id(ride_distance).state);
+          const bool mi = ${use_miles};
+          it.printf(0, 63, id(font1), TextAlign::BASELINE_LEFT, "%.2f %s",
+                    id(ride_distance).state * (mi ? 0.621371f : 1.0f), mi ? "MI" : "KM");
           if (id(homeassistant_time).now().is_valid())
             it.strftime(64, 63, id(font1), TextAlign::BASELINE_CENTER, "%H:%M",
                         id(homeassistant_time).now());
@@ -443,7 +560,33 @@ display:
           else
             it.print(127, 63, id(font1), TextAlign::BASELINE_RIGHT, "-- BPM");
 
-      # --- Page 2: heart rate -------------------------------------------
+      # --- Page 2: goals (odometer + next milestone) --------------------
+      - id: page_goals
+        lambda: |-
+          const bool mi = ${use_miles};
+          const float k = mi ? 0.621371f : 1.0f;
+          const char *u = mi ? "mi" : "km";
+          float km = id(odometer_revs) * id(m_per_rev) / 1000.0f;
+          if (millis() < id(celebrate_until)) {
+            it.print(64, 0, id(font3), TextAlign::TOP_CENTER, "MILESTONE!");
+            it.printf(64, 22, id(font3), TextAlign::TOP_CENTER, "%s", id(ms_last_name).c_str());
+            it.printf(64, 63, id(font1), TextAlign::BASELINE_CENTER, "%.1f %s TOTAL", km * k, mi ? "MI" : "KM");
+            return;
+          }
+          it.printf(0, 0, id(font3), TextAlign::TOP_LEFT, "%.1f %s", km * k, u);
+          it.print(127, 4, id(font1), TextAlign::TOP_RIGHT, "ODOMETER");
+          it.print(0, 20, id(font1), TextAlign::TOP_LEFT, "NEXT");
+          it.printf(0, 30, id(font3), TextAlign::TOP_LEFT, "%s", id(ms_next_name).c_str());
+          float span = id(ms_next_km) - id(ms_prev_km);
+          float frac = span > 0 ? (km - id(ms_prev_km)) / span : 1.0f;
+          if (frac < 0) frac = 0;
+          if (frac > 1) frac = 1;
+          it.rectangle(0, 48, 128, 7);
+          it.filled_rectangle(0, 48, (int) (128 * frac), 7);
+          it.printf(127, 63, id(font1), TextAlign::BASELINE_RIGHT, "%.1f %s TO GO",
+                    (id(ms_next_km) - km) * k, mi ? "MI" : "KM");
+
+      # --- Page 3: heart rate -------------------------------------------
       - id: page_hr
         lambda: |-
           it.print(0, 0, id(font3), TextAlign::TOP_LEFT, "Heart rate");
@@ -455,7 +598,7 @@ display:
           it.print(64, 63, id(font1), TextAlign::BASELINE_CENTER,
                    id(hrm).connected() ? "STRAP CONNECTED" : "STRAP NOT FOUND");
 
-      # --- Page 3: brake diagnostics (calibration helper) ---------------
+      # --- Page 4: brake diagnostics (calibration helper) ---------------
       - id: page_brake
         lambda: |-
           it.print(0, 0, id(font3), TextAlign::TOP_LEFT, "Brake");
@@ -472,6 +615,61 @@ interval:
     then:
       - lambda: |-
           if (id(cadence).has_state() && id(cadence).state > 0) id(ride_seconds)++;
+
+  # Milestones, by lifetime distance. Names are kept short enough for one OLED
+  # line. Add your own: keep the list sorted by distance.
+  - interval: 5s
+    then:
+      - lambda: |-
+          struct Milestone { float km; const char *name; };
+          static const Milestone M[] = {
+            {    21.6f, "Length of Manhattan"},       // 13.4 mi
+            {    33.3f, "English Channel"},           // Dover-Calais, 20.7 mi
+            {    38.4f, "Pontchartrain Cswy"},        // 23.8 mi
+            {    42.2f, "A marathon"},
+            {    82.0f, "Panama Canal"},
+            {   117.5f, "Hadrian's Wall"},            // 73 mi
+            {   160.9f, "A century ride"},            // 100 mi
+            {   386.0f, "Katy Trail"},                // 240 mi
+            {   446.0f, "Grand Canyon"},              // 277 mi end to end
+            {   458.0f, "Across Arkansas"},           // I-40, 285 mi
+            {   715.0f, "Natchez Trace"},             // 444 mi
+            {  1056.0f, "Pacific Coast Hwy"},         // CA-1, 656 mi
+            {  1407.0f, "Land's End-J o'Groats"},     // 874 mi
+            {  3400.0f, "A Tour de France"},
+            {  3537.0f, "Appalachian Trail"},         // 2,198 mi
+            {  3940.0f, "Route 66"},                  // 2,448 mi
+            {  4490.0f, "New York to LA"},
+            {  8850.0f, "Great Wall (Ming)"},
+            { 40075.0f, "Around the Earth"},
+          };
+          const int N = sizeof(M) / sizeof(M[0]);
+          const bool mi = ${use_miles};
+          float km = id(odometer_revs) * id(m_per_rev) / 1000.0f;
+
+          int done = 0;
+          while (done < N && km >= M[done].km) done++;
+
+          if (done > id(milestones_done)) {
+            id(milestones_done) = done;
+            id(ms_last_name) = M[done - 1].name;
+            id(last_milestone).publish_state(id(ms_last_name));
+            id(announce_milestone).execute();
+          } else if (done > 0 && id(ms_last_name).empty()) {
+            id(ms_last_name) = M[done - 1].name;              // after a reboot
+            id(last_milestone).publish_state(id(ms_last_name));
+          }
+
+          int next = done < N ? done : N - 1;
+          id(ms_prev_km) = done > 0 ? M[done - 1].km : 0.0f;
+          id(ms_next_km) = M[next].km;
+          if (id(ms_next_name) != M[next].name) {
+            id(ms_next_name) = M[next].name;
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%s (%.0f %s)", M[next].name,
+                     M[next].km * (mi ? 0.621371f : 1.0f), mi ? "mi" : "km");
+            id(next_milestone).publish_state(buf);
+          }
 
   # Brake position loop, 20 Hz.
   - interval: 50ms
