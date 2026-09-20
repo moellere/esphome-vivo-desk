@@ -130,6 +130,25 @@ Left to right, matching signal flow:
 5. **OLED/encoder module** on a 4‑pin + 5‑pin header (or a short ribbon) so it
    can mount on the desk edge; keep the I2C leads under ~30 cm.
 
+### WireStudio design
+
+`wirestudio/design.json` models the ESP32 side of this build for
+[wirestudio](https://github.com/moellere/wirestudio): board, I2C bus, OLED,
+encoder, three keys, pot ADC, reed input, the two bridge inputs and their
+pull-downs. It validates the pin map (no strapping, ADC2/Wi-Fi or
+input-only conflicts) and renders `wirestudio/wiring.txt`. Regenerate with:
+
+```
+wirestudio-generate proform-xp185/wirestudio/design.json \
+  --out-ascii proform-xp185/wirestudio/wiring.txt
+```
+
+The library has no H-bridge or discrete MOSFET parts, so the bridge itself is
+represented only by its two GPIO inputs; the bridge tables above are the
+reference for that half of the board. The YAML wirestudio renders is a
+skeleton; `desk-bike.yaml` is the real firmware (control loop, display
+pages, ride tracking).
+
 ## The local UI
 
 | Control | Action |
@@ -192,9 +211,11 @@ in this repo's history if you ever want it.)
 `desk-bike.yaml` follows the same shape as the scroller project: `common/
 base.yaml` and `common/sensor.yaml` are merged in, fonts come from
 `common/fonts/` (slkscr, BebasNeue‑Regular, arial). Remember that a
-top‑level key in the main file *replaces* the same key from an include, so
-wifi/api/ota/logger are left to `base.yaml`, and this file's `sensor:` block
-replaces whatever `sensor.yaml` provides.
+`base.yaml` brings wifi/api/ota/logger in through `packages:`, which
+deep‑merge, so the `wifi:` block here only adds `fast_connect` and
+`power_save_mode: none`. Keys merged with `<<:` do not deep‑merge, so this
+file's `sensor:` list replaces `sensor.yaml`'s; uptime and Wi‑Fi signal are
+repeated in it.
 
 ## Not included (yet)
 

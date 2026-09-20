@@ -71,12 +71,16 @@ time:
   - platform: homeassistant
     id: homeassistant_time
 
-# NOTE: a top-level key defined in this file replaces the same key from an
-# include entirely (ESPHome does not deep-merge). So wifi/api/ota/logger are
-# left to base.yaml; set "power_save_mode: none" there, it keeps the BLE strap
-# connection stable. The sensor: key below likewise replaces common/sensor.yaml.
 <<: !include common/base.yaml
 <<: !include common/sensor.yaml
+
+# base.yaml brings wifi/api/ota/logger in via packages:, which deep-merge, so
+# this only adds to the wifi block. (The sensor: key below, by contrast,
+# replaces common/sensor.yaml's list, so uptime and wifi_signal are repeated
+# there.)
+wifi:
+  fast_connect: true
+  power_save_mode: none   # keeps the BLE strap connection stable
 
 esp32_ble_tracker:
 
@@ -155,6 +159,12 @@ output:
     id: brake_in2
 
 sensor:
+  - platform: uptime
+    name: ${devicename} Uptime
+  - platform: wifi_signal
+    name: ${devicename} WiFi Signal
+    update_interval: 60s
+
   - platform: rotary_encoder
     name: "${upper_devicename} Encoder"
     id: resistance_dial

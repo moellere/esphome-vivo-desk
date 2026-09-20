@@ -1,0 +1,59 @@
++--------------------------------------------------------------------------------------------------+
+|  ESP32-DevKitC-V4  ---  desk-bike                                                                |
++--------------------------------------------------------------------------------------------------+
+|  Rails: 5V, 3V3, GND                                                                             |
+|                                                                                                  |
+|  oled  [SSD1306 / SH1106 OLED display (I2C)]  -- OLED 1.3in SH1116                               |
+|    VCC   -> rail 3V3                                                                             |
+|    GND   -> rail GND                                                                             |
+|    SDA   -> i2c0 (GPIO21)                                                                        |
+|    SCL   -> i2c0 (GPIO22)                                                                        |
+|                                                                                                  |
+|  dial  [Quadrature rotary encoder (KY-040 style)]  -- Resistance dial (EC11)                     |
+|    A     -> GPIO16                                                                               |
+|    B     -> GPIO17                                                                               |
+|                                                                                                  |
+|  btn_push  [Generic GPIO binary sensor]  -- Encoder push (PSH)                                   |
+|    IN    -> GPIO25                                                                               |
+|                                                                                                  |
+|  btn_back  [Generic GPIO binary sensor]  -- Back (BAK/KEY0)                                      |
+|    IN    -> GPIO26                                                                               |
+|                                                                                                  |
+|  btn_confirm  [Generic GPIO binary sensor]  -- Confirm (CON/KEY1)                                |
+|    IN    -> GPIO33                                                                               |
+|                                                                                                  |
+|  brake_pot  [Generic analog input]  -- Brake pot wiper (harness 4)                               |
+|    IN    -> GPIO34                                                                               |
+|                                                                                                  |
+|  crank_reed  [Pulse counter / tachometer (RPM, flow, energy)]  -- Crank reed switch (harness 7)  |
+|    PULSE -> GPIO27                                                                               |
+|                                                                                                  |
+|  bridge_in1  [Generic GPIO switch / relay output]  -- H-bridge IN1 -> motor A (harness 1)        |
+|    OUT   -> GPIO18                                                                               |
+|                                                                                                  |
+|  bridge_in2  [Generic GPIO switch / relay output]  -- H-bridge IN2 -> motor B (harness 2)        |
+|    OUT   -> GPIO19                                                                               |
+|                                                                                                  |
+|  Passives:                                                                                       |
+|    r_in1_pd: 10k resistor, bridge_in1.OUT  <->  GND   (hold bridge input low during boot)        |
+|    r_in2_pd: 10k resistor, bridge_in2.OUT  <->  GND   (hold bridge input low during boot)        |
+|    c_oled: 100nF capacitor, oled.VCC  <->  GND   (decoupling oled)                               |
+|                                                                                                  |
+|  BOM:                                                                                            |
+|    - ESP32-DevKitC-V4                                                                            |
+|    - SSD1306 / SH1106 OLED display (I2C)  (oled)                                                 |
+|    - Quadrature rotary encoder (KY-040 style)  (dial)                                            |
+|    - Generic GPIO binary sensor  (btn_push)                                                      |
+|    - Generic GPIO binary sensor  (btn_back)                                                      |
+|    - Generic GPIO binary sensor  (btn_confirm)                                                   |
+|    - Generic analog input  (brake_pot)                                                           |
+|    - Pulse counter / tachometer (RPM, flow, energy)  (crank_reed)                                |
+|    - Generic GPIO switch / relay output  (bridge_in1)                                            |
+|    - Generic GPIO switch / relay output  (bridge_in2)                                            |
+|    - 2x 10k resistor                                                                             |
+|    - 1x 100nF capacitor                                                                          |
+|                                                                                                  |
+|  Power: ~8mA typical, ~20mA peak (budget 2000mA)  OK                                             |
+|                                                                                                  |
+|  Warnings: none                                                                                  |
++--------------------------------------------------------------------------------------------------+
