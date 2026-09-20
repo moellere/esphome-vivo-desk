@@ -32,6 +32,25 @@ Identify with the console unplugged:
 | Crank reed switch | 2 | Open, closes to ~0 Ω as the crank magnet passes. |
 | Spare | 1 | Frame ground / shield, an end‑stop switch, or unused. |
 
+Measured on one XP 185 U (pin numbers as counted on the console‑side 8‑pin
+footprint; verify yours):
+
+| Pin | Function | Console PCB side |
+|---|---|---|
+| 1 | Motor A | Output node of one half‑bridge (paired 2N4403 PNP high side) |
+| 2 | Motor B | Output node of the other half‑bridge (paired 2N4403 PNP high side) |
+| 3 | Pot supply | Feed from **3V3** in the new build |
+| 4 | Pot wiper | → ADC (`pin_pot_wiper`) |
+| 5 | Pot ground | GND |
+| 6 | Reed switch return | GND |
+| 7 | Reed switch | → `pin_reed` (pull‑up enabled) |
+| 8 | Ground | GND |
+
+The 2N4403 is rated 600 mA, so the console bridge was sized for roughly 1 A
+per leg. A saturated PNP + NPN pair drops about 1 V, so on a 5 V supply the
+motor sees ~4 V through the console bridge; a MOSFET module (DRV8833) gives
+it the full 5 V.
+
 ### ESP32 connections (defaults in the `substitutions:` block)
 
 | Signal | ESP pin | Notes |
