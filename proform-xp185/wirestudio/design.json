@@ -66,15 +66,9 @@
       "params": {}
     },
     {
-      "id": "bridge_in1",
-      "library_id": "gpio_output",
-      "label": "H-bridge IN1 -> motor A (harness 1)",
-      "params": {}
-    },
-    {
-      "id": "bridge_in2",
-      "library_id": "gpio_output",
-      "label": "H-bridge IN2 -> motor B (harness 2)",
+      "id": "bridge",
+      "library_id": "hbridge_mosfet",
+      "label": "Brake motor bridge (harness 1/2)",
       "params": {}
     }
   ],
@@ -177,43 +171,39 @@
       }
     },
     {
-      "component_id": "bridge_in1",
-      "pin_role": "OUT",
+      "component_id": "bridge",
+      "pin_role": "IN1",
       "target": {
         "kind": "gpio",
         "pin": "GPIO18"
       }
     },
     {
-      "component_id": "bridge_in2",
-      "pin_role": "OUT",
+      "component_id": "bridge",
+      "pin_role": "IN2",
       "target": {
         "kind": "gpio",
         "pin": "GPIO19"
       }
+    },
+    {
+      "component_id": "bridge",
+      "pin_role": "VM",
+      "target": {
+        "kind": "rail",
+        "rail": "5V"
+      }
+    },
+    {
+      "component_id": "bridge",
+      "pin_role": "GND",
+      "target": {
+        "kind": "rail",
+        "rail": "GND"
+      }
     }
   ],
   "passives": [
-    {
-      "id": "r_in1_pd",
-      "kind": "resistor",
-      "value": "10k",
-      "between": [
-        "bridge_in1.OUT",
-        "GND"
-      ],
-      "purpose": "hold bridge input low during boot"
-    },
-    {
-      "id": "r_in2_pd",
-      "kind": "resistor",
-      "value": "10k",
-      "between": [
-        "bridge_in2.OUT",
-        "GND"
-      ],
-      "purpose": "hold bridge input low during boot"
-    },
     {
       "id": "c_oled",
       "kind": "capacitor",

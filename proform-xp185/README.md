@@ -132,22 +132,30 @@ Left to right, matching signal flow:
 
 ### WireStudio design
 
-`wirestudio/design.json` models the ESP32 side of this build for
-[wirestudio](https://github.com/moellere/wirestudio): board, I2C bus, OLED,
-encoder, three keys, pot ADC, reed input, the two bridge inputs and their
-pull-downs. It validates the pin map (no strapping, ADC2/Wi-Fi or
-input-only conflicts) and renders `wirestudio/wiring.txt`. Regenerate with:
+`wirestudio/design.json` models the whole controller for
+[wirestudio](https://github.com/moellere/WireStudio): board, I2C bus, OLED,
+encoder, three keys, pot ADC, reed input, and the MOSFET bridge as an
+`hbridge_mosfet` component. That component and the library subcircuit
+support it relies on are in
+[WireStudio#262](https://github.com/moellere/WireStudio/pull/262); until that
+merges, regenerate from that branch.
+
+| File | What it is |
+|---|---|
+| `wiring.txt` | pin map, passives, power budget; validates with no warnings in strict mode |
+| `bom.csv` | every part with designators: Q1/Q4 IRF4905, Q2/Q5 IRFZ44N, Q3/Q6 2N3904, R1–R6, C1, C2, J1 motor terminal |
+| `desk-bike.skidl.py` | run with SKiDL to get `desk-bike.kicad_sch` |
+| `desk-bike.kicad_pcb` | placed, unrouted board with every pad bound to its net |
 
 ```
-wirestudio-generate proform-xp185/wirestudio/design.json \
+wirestudio-generate proform-xp185/wirestudio/design.json --strict \
   --out-ascii proform-xp185/wirestudio/wiring.txt
 ```
 
-The library has no H-bridge or discrete MOSFET parts, so the bridge itself is
-represented only by its two GPIO inputs; the bridge tables above are the
-reference for that half of the board. The YAML wirestudio renders is a
-skeleton; `desk-bike.yaml` is the real firmware (control loop, display
-pages, ride tracking).
+The harness connector, the USB-C input and its CC resistors are not library
+parts yet, so add those in KiCad. The YAML wirestudio renders is a skeleton;
+`desk-bike.yaml` is the real firmware (control loop, display pages, ride
+tracking).
 
 ## The local UI
 
