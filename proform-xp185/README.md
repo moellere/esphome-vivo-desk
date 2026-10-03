@@ -66,6 +66,10 @@ side, so the motor's stall current is under 600 mA.
 
 ### Recommended bridge: two MOSFET half‑bridges
 
+![H-bridge schematic](wirestudio/hbridge-schematic.png)
+
+(Editable SVG: `wirestudio/hbridge-schematic.svg`.)
+
 Three parts per half‑bridge, no heat, nearly the full 5 V at the motor, and
 the FET body diodes handle flyback. Build two, one per motor pin.
 

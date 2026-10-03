@@ -1,0 +1,250 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="880" viewBox="0 0 1400 880">
+<rect width="1400" height="880" fill="white"/>
+<text x="700.0" y="38" font-size="20" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Desk Bike brake motor H-bridge — two IRF4905 / IRFZ44N half-bridges with 2N3904 gate drivers (5 V)</text>
+<text x="700.0" y="60" font-size="13" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">Designators match proform-xp185/wirestudio/bom.csv and desk-bike.skidl.py</text>
+<line x1="40" y1="90" x2="1360" y2="90" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<text x="40" y="80" font-size="14" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">+5 V motor rail (USB-C)</text>
+<line x1="40" y1="800" x2="1360" y2="800" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<text x="40" y="824" font-size="14" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GND (single point at the ESP / bridge)</text>
+<line x1="560" y1="190" x2="560" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="272.0" x2="560" y2="310" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="228.0" x2="546" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="272.0" x2="546" y2="272.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="546" y1="224.0" x2="546" y2="236.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="546" y1="244.0" x2="546" y2="256.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="546" y1="264.0" x2="546" y2="276.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="532" y1="226.0" x2="532" y2="274.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="532" y1="250.0" x2="490" y2="250.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="546" y1="250.0" x2="560" y2="250.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="250.0" x2="560" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="558,250.0 548,245.0 548,255.0" fill="#1a1a1a"/>
+<text x="578" y="246.0" font-size="14" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q1</text>
+<text x="578" y="264.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IRF4905</text>
+<text x="568" y="206" font-size="11" text-anchor="start" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">S</text>
+<text x="568" y="302" font-size="11" text-anchor="start" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">D</text>
+<text x="516" y="242.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">G</text>
+<line x1="560" y1="90" x2="560" y2="190" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="560" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="560" y1="310" x2="560" y2="430" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="560" cy="430" r="4" fill="#1a1a1a"/>
+<line x1="560" y1="550" x2="560" y2="588.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="632.0" x2="560" y2="670" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="588.0" x2="546" y2="588.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="632.0" x2="546" y2="632.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="546" y1="584.0" x2="546" y2="596.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="546" y1="604.0" x2="546" y2="616.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="546" y1="624.0" x2="546" y2="636.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="532" y1="586.0" x2="532" y2="634.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="532" y1="610.0" x2="490" y2="610.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="546" y1="610.0" x2="560" y2="610.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="610.0" x2="560" y2="632.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="548,610.0 558,605.0 558,615.0" fill="#1a1a1a"/>
+<text x="578" y="606.0" font-size="14" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q2</text>
+<text x="578" y="624.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IRFZ44N</text>
+<text x="568" y="566" font-size="11" text-anchor="start" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">D</text>
+<text x="568" y="662" font-size="11" text-anchor="start" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">S</text>
+<text x="516" y="602.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">G</text>
+<line x1="560" y1="430" x2="560" y2="550" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="560" y1="670" x2="560" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="560" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="490" y1="250" x2="430" y2="250" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="490" y1="610" x2="430" y2="610" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="430" y1="250" x2="430" y2="610" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="430" cy="250" r="4" fill="#1a1a1a"/>
+<circle cx="430" cy="610" r="4" fill="#1a1a1a"/>
+<text x="418" y="435" font-size="13" text-anchor="end" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">node D</text>
+<line x1="430" y1="90" x2="430" y2="150.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="430" y1="190.0" x2="430" y2="250" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="422.0" y="150.0" width="16" height="40" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="416" y="167.0" font-size="13" text-anchor="end" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R1</text>
+<text x="416" y="183.0" font-size="13" text-anchor="end" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">470 Ω</text>
+<circle cx="430" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="430" y1="610" x2="430" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="430" cy="730.0" r="22" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<line x1="422" y1="716.0" x2="422" y2="744.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="422" y1="730.0" x2="394" y2="730.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="422" y1="722.0" x2="438" y2="710.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="438" y1="710.0" x2="438" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="438" y1="690" x2="430" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="422" y1="738.0" x2="438" y2="750.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="438" y1="750.0" x2="438" y2="770" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="438" y1="770" x2="430" y2="770" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="438,750.0 425,747.0 431,739.0" fill="#1a1a1a"/>
+<text x="462" y="726.0" font-size="14" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q3</text>
+<text x="462" y="744.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">2N3904</text>
+<line x1="430" y1="770" x2="430" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="430" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="260" y1="730" x2="307.0" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="347.0" y1="730" x2="394" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="307.0" y="722.0" width="40" height="16" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="327.0" y="716" font-size="13" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R2  1 kΩ</text>
+<circle cx="260" cy="730" r="4" fill="#1a1a1a"/>
+<line x1="260" y1="730" x2="260" y2="745.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="260" y1="785.0" x2="260" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="252.0" y="745.0" width="16" height="40" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="246" y="762.0" font-size="13" text-anchor="end" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R3</text>
+<text x="246" y="778.0" font-size="13" text-anchor="end" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">10 kΩ</text>
+<circle cx="260" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="260" y1="730" x2="190" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="182" y="722" width="16" height="16" fill="white" stroke="#b4232c" stroke-width="2.5"/>
+<text x="190" y="708" font-size="13" text-anchor="middle" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">GPIO18 · IN1</text>
+<text x="574" y="418" font-size="13" text-anchor="start" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">harness 1</text>
+<line x1="840" y1="190" x2="840" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="272.0" x2="840" y2="310" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="228.0" x2="854" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="272.0" x2="854" y2="272.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="854" y1="224.0" x2="854" y2="236.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="854" y1="244.0" x2="854" y2="256.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="854" y1="264.0" x2="854" y2="276.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="868" y1="226.0" x2="868" y2="274.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="868" y1="250.0" x2="910" y2="250.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="854" y1="250.0" x2="840" y2="250.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="250.0" x2="840" y2="228.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="842,250.0 852,245.0 852,255.0" fill="#1a1a1a"/>
+<text x="822" y="246.0" font-size="14" text-anchor="end" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q4</text>
+<text x="822" y="264.0" font-size="13" text-anchor="end" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IRF4905</text>
+<text x="832" y="206" font-size="11" text-anchor="end" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">S</text>
+<text x="832" y="302" font-size="11" text-anchor="end" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">D</text>
+<text x="884" y="242.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">G</text>
+<line x1="840" y1="90" x2="840" y2="190" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="840" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="840" y1="310" x2="840" y2="430" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="840" cy="430" r="4" fill="#1a1a1a"/>
+<line x1="840" y1="550" x2="840" y2="588.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="632.0" x2="840" y2="670" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="588.0" x2="854" y2="588.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="632.0" x2="854" y2="632.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="854" y1="584.0" x2="854" y2="596.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="854" y1="604.0" x2="854" y2="616.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="854" y1="624.0" x2="854" y2="636.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="868" y1="586.0" x2="868" y2="634.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="868" y1="610.0" x2="910" y2="610.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="854" y1="610.0" x2="840" y2="610.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="610.0" x2="840" y2="632.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="852,610.0 842,605.0 842,615.0" fill="#1a1a1a"/>
+<text x="822" y="606.0" font-size="14" text-anchor="end" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q5</text>
+<text x="822" y="624.0" font-size="13" text-anchor="end" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IRFZ44N</text>
+<text x="832" y="566" font-size="11" text-anchor="end" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">D</text>
+<text x="832" y="662" font-size="11" text-anchor="end" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">S</text>
+<text x="884" y="602.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">G</text>
+<line x1="840" y1="430" x2="840" y2="550" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="840" y1="670" x2="840" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="840" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="910" y1="250" x2="970" y2="250" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="910" y1="610" x2="970" y2="610" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="970" y1="250" x2="970" y2="610" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="970" cy="250" r="4" fill="#1a1a1a"/>
+<circle cx="970" cy="610" r="4" fill="#1a1a1a"/>
+<text x="982" y="435" font-size="13" text-anchor="start" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">node D</text>
+<line x1="970" y1="90" x2="970" y2="150.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="970" y1="190.0" x2="970" y2="250" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="962.0" y="150.0" width="16" height="40" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="984" y="167.0" font-size="13" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R4</text>
+<text x="984" y="183.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">470 Ω</text>
+<circle cx="970" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="970" y1="610" x2="970" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="970" cy="730.0" r="22" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<line x1="978" y1="716.0" x2="978" y2="744.0" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+<line x1="978" y1="730.0" x2="1006" y2="730.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="978" y1="722.0" x2="962" y2="710.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="962" y1="710.0" x2="962" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="962" y1="690" x2="970" y2="690" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="978" y1="738.0" x2="962" y2="750.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="962" y1="750.0" x2="962" y2="770" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="962" y1="770" x2="970" y2="770" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<polygon points="962,750.0 975,747.0 969,739.0" fill="#1a1a1a"/>
+<text x="938" y="726.0" font-size="14" text-anchor="end" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">Q6</text>
+<text x="938" y="744.0" font-size="13" text-anchor="end" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">2N3904</text>
+<line x1="970" y1="770" x2="970" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="970" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="1006" y1="730" x2="1053.0" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1093.0" y1="730" x2="1140" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="1053.0" y="722.0" width="40" height="16" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="1073.0" y="716" font-size="13" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R5  1 kΩ</text>
+<circle cx="1140" cy="730" r="4" fill="#1a1a1a"/>
+<line x1="1140" y1="730" x2="1140" y2="745.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1140" y1="785.0" x2="1140" y2="800" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="1132.0" y="745.0" width="16" height="40" fill="white" stroke="#1a1a1a" stroke-width="2"/>
+<text x="1154" y="762.0" font-size="13" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R6</text>
+<text x="1154" y="778.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">10 kΩ</text>
+<circle cx="1140" cy="800" r="4" fill="#1a1a1a"/>
+<line x1="1140" y1="730" x2="1210" y2="730" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="1202" y="722" width="16" height="16" fill="white" stroke="#b4232c" stroke-width="2.5"/>
+<text x="1210" y="708" font-size="13" text-anchor="middle" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">GPIO19 · IN2</text>
+<text x="826" y="418" font-size="13" text-anchor="end" font-weight="bold" fill="#b4232c" font-family="Helvetica, Arial, sans-serif">harness 2</text>
+<line x1="560" y1="430" x2="655" y2="430" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="745" y1="430" x2="840" y2="430" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="700" cy="430" r="45" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+<text x="700" y="439" font-size="26" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">M</text>
+<text x="700" y="350" font-size="13" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">J1  brake gearmotor</text>
+<text x="700" y="366" font-size="13" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">(harness pins 1 / 2)</text>
+<line x1="600" y1="430" x2="600" y2="560" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="800" y1="430" x2="800" y2="560" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="600" cy="430" r="4" fill="#1a1a1a"/>
+<circle cx="800" cy="430" r="4" fill="#1a1a1a"/>
+<line x1="600" y1="560" x2="695.0" y2="560" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="705.0" y1="560" x2="800" y2="560" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="695.0" y1="549.0" x2="695.0" y2="571.0" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<line x1="705.0" y1="549.0" x2="705.0" y2="571.0" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<text x="700.0" y="590" font-size="13" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">C2  100 nF</text>
+<text x="700" y="610" font-size="12" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">across the motor</text>
+<line x1="1180" y1="90" x2="1180" y2="155.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1180" y1="165.0" x2="1180" y2="230" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1169.0" y1="155.0" x2="1191.0" y2="155.0" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<path d="M1169.0,170.0 Q1180,158.0 1191.0,170.0" fill="none" stroke="#1a1a1a" stroke-width="3"/>
+<text x="1157.0" y="157.0" font-size="14" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">+</text>
+<text x="1198" y="157.0" font-size="13" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">C1</text>
+<text x="1198" y="173.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">470 µF</text>
+<circle cx="1180" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="1180" y1="230" x2="1180" y2="240" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1166" y1="240" x2="1194" y2="240" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="1171" y1="246" x2="1189" y2="246" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="1176" y1="252" x2="1184" y2="252" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="1290" y1="90" x2="1290" y2="155.0" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1290" y1="165.0" x2="1290" y2="230" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1279.0" y1="155.0" x2="1301.0" y2="155.0" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<line x1="1279.0" y1="165.0" x2="1301.0" y2="165.0" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+<text x="1308" y="157.0" font-size="13" text-anchor="start" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">C3</text>
+<text x="1308" y="173.0" font-size="13" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">100 nF (opt.)</text>
+<circle cx="1290" cy="90" r="4" fill="#1a1a1a"/>
+<line x1="1290" y1="230" x2="1290" y2="240" stroke="#1a1a1a" stroke-width="2.2" stroke-linecap="round"/>
+<line x1="1276" y1="240" x2="1304" y2="240" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="1281" y1="246" x2="1299" y2="246" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<line x1="1286" y1="252" x2="1294" y2="252" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+<text x="1235" y="290" font-size="12" text-anchor="middle" font-weight="normal" fill="#555" font-family="Helvetica, Arial, sans-serif">bulk + HF decoupling, at the bridge</text>
+<rect x="60" y="120" width="300" height="122" rx="6" fill="#f6f6f6" stroke="#bbb"/>
+<text x="72" y="144" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GPIO high → Q3 on → node D ≈ 0 V</text>
+<text x="72" y="164" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">        → P-FET on, N-FET off → output 5 V</text>
+<text x="72" y="184" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GPIO low → Q3 off → R1 pulls D to 5 V</text>
+<text x="72" y="204" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">        → P-FET off, N-FET on → output GND</text>
+<text x="72" y="224" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">R3 holds the input low while the ESP boots.</text>
+<rect x="60" y="262" width="300" height="118" rx="6" fill="#f6f6f6" stroke="#bbb"/>
+<text x="90" y="284" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IN1</text>
+<text x="135" y="284" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">IN2</text>
+<text x="188" y="284" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">pin 1</text>
+<text x="243" y="284" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">pin 2</text>
+<text x="305" y="284" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">motor</text>
+<text x="90" y="304" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">L</text>
+<text x="135" y="304" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">L</text>
+<text x="188" y="304" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GND</text>
+<text x="243" y="304" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GND</text>
+<text x="305" y="304" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">off (brake)</text>
+<text x="90" y="324" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">H</text>
+<text x="135" y="324" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">L</text>
+<text x="188" y="324" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">5 V</text>
+<text x="243" y="324" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GND</text>
+<text x="305" y="324" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">direction A</text>
+<text x="90" y="344" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">L</text>
+<text x="135" y="344" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">H</text>
+<text x="188" y="344" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">GND</text>
+<text x="243" y="344" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">5 V</text>
+<text x="305" y="344" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">direction B</text>
+<text x="90" y="364" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">H</text>
+<text x="135" y="364" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">H</text>
+<text x="188" y="364" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">5 V</text>
+<text x="243" y="364" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">5 V</text>
+<text x="305" y="364" font-size="12.5" text-anchor="middle" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">off</text>
+<rect x="60" y="400" width="300" height="64" rx="6" fill="#f6f6f6" stroke="#bbb"/>
+<text x="72" y="424" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">TO-220 (flat face, legs down): G · D · S, tab = D</text>
+<text x="72" y="446" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1a1a1a" font-family="Helvetica, Arial, sans-serif">2N3904 (flat face, legs down): E · B · C</text>
+</svg>
