@@ -186,6 +186,12 @@ in; it runs under the board and exits at the centre channel.
   100 nF between the two motor pins (g57–g58).
 - OLED/encoder cable on a 9‑pin header in row j, columns 25–33.
 
+## Printed enclosure
+
+See [`enclosure/`](enclosure/README.md): a parametric base + lid around the Perma‑Proto snap‑in tray, with a keystone port for the Cat‑6 harness extension, a USB‑C slot and the OLED/encoder module in the lid.
+
+![Enclosure base](enclosure/base.png)
+
 ## The local UI
 
 | Control | Action |
@@ -202,22 +208,36 @@ moving/idle, fault — the calibration page).
 
 ## Calibration
 
-1. Flash with the defaults, power up, and open the device in Home Assistant
-   (or turn the encoder push to the **Brake** page).
-2. Press **Brake Jog IN1** a few times and watch **Brake Position** (volts).
-   If the voltage *rises*, leave `in1_raises_pot: "true"`; if it falls, set
-   `"false"`.
-3. Jog to the lightest resistance you want as level 1 (magnets furthest from
-   the flywheel) and note the voltage → `pot_v_level1`.
-4. Jog the other way to the heaviest usable position and note it →
-   `pot_v_level8`. Stop short of the mechanical end stops by a few hundredths
-   of a volt so the loop never drives into them.
-5. Re‑flash. **Resistance Level** now maps 1–8 linearly between those two
-   voltages, and the loop stops within `deadband_v` of the target.
+The brake is positioned by **burst‑and‑settle**: the motor runs for a short
+burst, stops, waits 100 ms, and only then is the pot read (8‑sample average,
+no motor current flowing, so no ground bounce and no coasting error). The
+loop then decides the next burst, shorter as it gets close, and stops when
+the settled reading is within `deadband_v` of the target. A move that
+doesn't advance the wiper for `max_stalled_bursts` bursts, or runs past
+`stall_timeout_ms`, raises **Brake Motor Fault**.
 
-If **Brake Motor Fault** turns on, the motor ran for `stall_timeout_ms`
-without reaching the target: wrong `in1_raises_pot`, a target outside the
-pot's range, or a jam. Fix the cause and change the level again to clear it.
+Levels map to wiper voltages through the eight‑entry `level_volts` table.
+Magnetic drag rises steeply as the gap closes, so the useful tension lives in
+the last part of the travel; a linear spread puts most levels where you feel
+almost nothing. Measure the two ends, then bunch the levels toward the heavy
+end:
+
+1. Flash with the defaults and open the **Brake** page (or Home Assistant).
+2. Press **Brake Jog IN1** a few times and watch the voltage. If it *rises*,
+   leave `in1_raises_pot: "true"`; if it falls, set `"false"`.
+3. Jog to the lightest position you want as level 1 and note the voltage, v1.
+4. Jog the other way until the motor stalls at the heavy end, back off a few
+   hundredths of a volt, note the voltage, v8. Pedal: this is level 8.
+5. Fill `level_volts` with eight values from v1 to v8. A good start is
+   `v1 + (v8 - v1) * sqrt((i - 1) / 7)` for i = 1..8, which is what the
+   default table is for v1 = 0.40, v8 = 2.90. Then ride a few minutes at each
+   level and move individual entries until the steps feel even.
+6. Re‑flash.
+
+If a level change ends in **Brake Motor Fault**, the Brake page shows the
+settled position, the target and the burst count: a target outside the
+measured range, the wrong `in1_raises_pot`, or a jam are the usual causes.
+Change the level again to clear it.
 
 ## Distance, odometer and milestones
 
