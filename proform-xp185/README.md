@@ -186,6 +186,12 @@ in; it runs under the board and exits at the centre channel.
   100 nF between the two motor pins (g57–g58).
 - OLED/encoder cable on a 9‑pin header in row j, columns 25–33.
 
+## Printed enclosure
+
+See [`enclosure/`](enclosure/README.md): a parametric base + lid around the Perma‑Proto snap‑in tray, with a keystone port for the Cat‑6 harness extension, a USB‑C slot and the OLED/encoder module in the lid.
+
+![Enclosure base](enclosure/base.png)
+
 ## The local UI
 
 | Control | Action |
