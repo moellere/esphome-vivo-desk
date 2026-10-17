@@ -161,6 +161,31 @@ parts yet, so add those in KiCad. The YAML wirestudio renders is a skeleton;
 `desk-bike.yaml` is the real firmware (control loop, display pages, ride
 tracking).
 
+## Breadboard build (830-point)
+
+![Breadboard layout](wirestudio/breadboard-layout.png)
+
+(Editable SVG: `wirestudio/breadboard-layout.svg`; the wire list is printed on
+the drawing.)
+
+The ESP32‑DevKitC V4's pin rows are 1.0 in apart, so on a single 830‑point
+board only **one** free tie point exists per pin, along one header. The
+layout puts the module in rows **i** and **a** with the 3V3‑side header on
+row i, so row **j** serves 5V, GND, 3V3, GPIO34, 27, 25, 26 and 33. The six
+signals on the other header (GPIO16, 17, 18, 19, 21, 22) are reached by
+seating a jumper in hole **e** of that column *before* pressing the module
+in; it runs under the board and exits at the centre channel.
+
+- Rails: + = 5 V, − = GND on both edges, joined at column 63; 5 V in from the
+  USB‑C breakout at column 1. C1 470 µF (col 24) and C3 100 nF (col 53)
+  across the bottom rail. A 3V3 mini‑bus is column 22 (rows f–j).
+- Bridge on the bottom block: Q1/Q2/Q3 in columns 25–35, Q4/Q5/Q6 in
+  40–50, standing TO‑220s with G‑D‑S in adjacent columns of row b, GPIO
+  nodes at columns 36 and 51.
+- RJ45 breakout in row j, columns 54–61 (pins 1–8, T568B colours); C2
+  100 nF between the two motor pins (g57–g58).
+- OLED/encoder cable on a 9‑pin header in row j, columns 25–33.
+
 ## The local UI
 
 | Control | Action |
