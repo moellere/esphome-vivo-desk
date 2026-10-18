@@ -102,6 +102,14 @@ def build():
     c_bridge_c_motor = Part("Device", "C", ref="C2", value="100nF", footprint="Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
     # bridge.j_motor (Discrete MOSFET H-bridge (IRF4905 / IRFZ44N, 5 V): j_motor)
     c_bridge_j_motor = Part("Connector_Generic", "Conn_01x02", ref="J1", value="Motor", footprint="TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2_1x02_P5.00mm_Horizontal")
+    # psu.j_usb (USB-C 5 V power input (receptacle + CC pull-downs): j_usb)
+    c_psu_j_usb = Part("Connector", "USB_C_Receptacle_USB2.0_16P", ref="J2", value="USB-C", footprint="Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12")
+    # psu.r_cc1 (USB-C 5 V power input (receptacle + CC pull-downs): r_cc1)
+    c_psu_r_cc1 = Part("Device", "R", ref="R7", value="5.1k", footprint="Resistor_SMD:R_0805_2012Metric")
+    # psu.r_cc2 (USB-C 5 V power input (receptacle + CC pull-downs): r_cc2)
+    c_psu_r_cc2 = Part("Device", "R", ref="R8", value="5.1k", footprint="Resistor_SMD:R_0805_2012Metric")
+    # psu.c_bulk (USB-C 5 V power input (receptacle + CC pull-downs): c_bulk)
+    c_psu_c_bulk = Part("Device", "C", ref="C3", value="10uF", footprint="Capacitor_SMD:C_0805_2012Metric")
 
     # ---- Buses ----------------------------------------------------------
     NET_BUS_i2c0 = Net("BUS_i2c0")  # i2c bus
@@ -163,6 +171,26 @@ def build():
     c_bridge_c_motor["2"] += n_bridge_out_b
     c_bridge_j_motor["1"] += n_bridge_out_a
     c_bridge_j_motor["2"] += n_bridge_out_b
+    # psu: subcircuit
+    n_psu_cc1 = Net("psu_cc1")
+    n_psu_cc2 = Net("psu_cc2")
+    c_psu_j_usb["A4"] += NET_PLUS__5V
+    c_psu_j_usb["A9"] += NET_PLUS__5V
+    c_psu_j_usb["B4"] += NET_PLUS__5V
+    c_psu_j_usb["B9"] += NET_PLUS__5V
+    c_psu_j_usb["A1"] += GND
+    c_psu_j_usb["A12"] += GND
+    c_psu_j_usb["B1"] += GND
+    c_psu_j_usb["B12"] += GND
+    c_psu_j_usb["S1"] += GND
+    c_psu_j_usb["A5"] += n_psu_cc1
+    c_psu_j_usb["B5"] += n_psu_cc2
+    c_psu_r_cc1["1"] += n_psu_cc1
+    c_psu_r_cc1["2"] += GND
+    c_psu_r_cc2["1"] += n_psu_cc2
+    c_psu_r_cc2["2"] += GND
+    c_psu_c_bulk["1"] += NET_PLUS__5V
+    c_psu_c_bulk["2"] += GND
 
 
 if __name__ == "__main__":

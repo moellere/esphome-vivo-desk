@@ -147,10 +147,10 @@ design is saved on the studio at wirestudio.dorktool.com as `desk-bike`.
 | File | What it is |
 |---|---|
 | `wiring.txt` | pin map, passives, power budget; validates with no warnings in strict mode |
-| `bom.csv` | every part with designators: Q1/Q4 IRF4905, Q2/Q5 IRFZ44N, Q3/Q6 2N3904, R1–R6, C1, C2, J1 motor terminal |
+| `bom.csv` | every part with designators: Q1/Q4 IRF4905, Q2/Q5 IRFZ44N, Q3/Q6 2N3904, R1–R6, C1, C2, J1 motor terminal, J2 USB-C with R7/R8 and C3 |
 | `desk-bike.skidl.py` | run with SKiDL to get `desk-bike.kicad_sch` |
 | `cpl.csv` | JLCPCB pick-and-place positions |
-| `desk-bike.kicad_pcb` | placed and autorouted board (Freerouting through wirestudio: 28 nets, 118 segments, 5 vias, every pad bound to its net) |
+| `desk-bike.kicad_pcb` | placed and autorouted board (Freerouting through wirestudio: 179 segments, 7 vias, every pad bound to its net) |
 | `desk-bike-fab.zip` | JLCPCB upload bundle from the routed board: Gerbers, drill, BOM, CPL |
 
 ```
@@ -158,10 +158,10 @@ wirestudio-generate proform-xp185/wirestudio/design.json --strict \
   --out-ascii proform-xp185/wirestudio/wiring.txt
 ```
 
-The USB-C input and its CC resistors are a library part, `usb_c_power_in`
-([WireStudio#298](https://github.com/moellere/WireStudio/pull/298)); once a
-release carrying it is deployed, add a `psu` instance wired VBUS → 5V, GND →
-GND and regenerate. The 8-pin harness connector needs passthrough connector
+The USB-C input and its CC resistors are the `psu` instance of the
+`usb_c_power_in` library part (WireStudio 0.39.0,
+[#298](https://github.com/moellere/WireStudio/pull/298)): J2, R7/R8 5.1k, C3
+10 µF, VBUS on the 5 V rail. The 8-pin harness connector needs passthrough connector
 pins and a `net` connection target
 ([WireStudio#300](https://github.com/moellere/WireStudio/issues/300)); until
 then add it in KiCad. The YAML wirestudio renders is a skeleton;
