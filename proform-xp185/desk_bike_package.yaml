@@ -1,7 +1,8 @@
 # Home Assistant package: distance per day / week / month / year from the
 # bike's lifetime odometer, plus a notification when a milestone unlocks.
 #
-# Install: copy to <config>/packages/desk_bike.yaml with
+# Install: copy to <config>/packages/desk_bike_package.yaml (the filename
+# becomes the package slug, so it must use underscores, not hyphens) with
 #   homeassistant:
 #     packages: !include_dir_named packages
 # in configuration.yaml, then restart HA. (The same four meters can instead be

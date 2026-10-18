@@ -253,8 +253,9 @@ substitution to taste; `use_miles` switches the OLED and milestone text.
   flash (written at most every 5 minutes) so it survives reboots and OTA
   updates. It is `total_increasing` with `device_class: distance`, which is
   what Home Assistant's utility meter needs.
-  `homeassistant-desk-bike.yaml` is a ready package with daily, weekly,
-  monthly and yearly meters.
+  `desk_bike_package.yaml` is a ready package with daily, weekly, monthly
+  and yearly meters. Copy it into `<config>/packages/` keeping an underscore
+  name: HA uses the filename as the package slug and rejects hyphens.
 - **Milestones** unlock on lifetime distance: Length of Manhattan, English
   Channel, Pontchartrain Causeway, a marathon, Panama Canal, Hadrian's Wall
   (117.5 km), a century ride, Katy Trail, Grand Canyon, Across Arkansas
