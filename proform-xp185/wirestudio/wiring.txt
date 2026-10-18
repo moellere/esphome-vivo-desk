@@ -34,6 +34,10 @@
 |    VM    -> rail 5V                                                                                |
 |    GND   -> rail GND                                                                               |
 |                                                                                                    |
+|  psu  [USB-C 5 V power input (receptacle + CC pull-downs)]  -- USB-C 5 V input                     |
+|    VBUS  -> rail 5V                                                                                |
+|    GND   -> rail GND                                                                               |
+|                                                                                                    |
 |  Passives:                                                                                         |
 |    c_oled: 100nF capacitor, oled.VCC  <->  GND   (decoupling oled)                                 |
 |                                                                                                    |
@@ -47,6 +51,7 @@
 |    - Generic analog input  (brake_pot)                                                             |
 |    - Pulse counter / tachometer (RPM, flow, energy)  (crank_reed)                                  |
 |    - Discrete MOSFET H-bridge (IRF4905 / IRFZ44N, 5 V)  (bridge)                                   |
+|    - USB-C 5 V power input (receptacle + CC pull-downs)  (psu)                                     |
 |    - 1x 100nF capacitor                                                                            |
 |                                                                                                    |
 |  Power: ~308mA typical, ~1020mA peak (budget 2000mA)  OK                                           |

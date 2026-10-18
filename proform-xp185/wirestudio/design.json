@@ -2,7 +2,7 @@
   "schema_version": "0.1",
   "id": "desk-bike",
   "name": "Desk Bike",
-  "description": "ProForm XP 185 U under-desk bike controller: brake motor H-bridge, feedback pot, crank reed switch, OLED + EC11 module. See ../README.md; the control loop lives in ../desk-bike.yaml.",
+  "description": "ProForm XP 185 U under-desk bike controller: brake motor H-bridge, feedback pot, crank reed switch, OLED + EC11 module, USB-C 5 V input. See ../README.md; the control loop lives in ../desk-bike.yaml.",
   "board": {
     "library_id": "esp32-devkitc-v4",
     "mcu": "esp32",
@@ -69,6 +69,12 @@
       "id": "bridge",
       "library_id": "hbridge_mosfet",
       "label": "Brake motor bridge (harness 1/2)",
+      "params": {}
+    },
+    {
+      "id": "psu",
+      "library_id": "usb_c_power_in",
+      "label": "USB-C 5 V input",
       "params": {}
     }
   ],
@@ -196,6 +202,22 @@
     },
     {
       "component_id": "bridge",
+      "pin_role": "GND",
+      "target": {
+        "kind": "rail",
+        "rail": "GND"
+      }
+    },
+    {
+      "component_id": "psu",
+      "pin_role": "VBUS",
+      "target": {
+        "kind": "rail",
+        "rail": "5V"
+      }
+    },
+    {
+      "component_id": "psu",
       "pin_role": "GND",
       "target": {
         "kind": "rail",
